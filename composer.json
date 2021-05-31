@@ -1,0 +1,21 @@
+{
+    "name": "nordkirche/nkc-base",
+    "type": "typo3-cms-extension",
+    "description": "Nordkirche NAPI Client Base Library",
+    "license": "GPL-2.0",
+    "author": [
+        {
+            "name": "netzleuchten GmbH",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "typo3/cms-core": "^10.4",
+        "nordkirche/ndk": "^1.7"
+    },
+    "autoload": {
+        "psr-4": {
+            "Nordkirche\\NkcBase\\": "Classes"
+        }
+    }
+}

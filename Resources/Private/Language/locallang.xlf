@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<xliff version="1.0">
+    <file source-language="en" datatype="plaintext" original="messages" product-name="nkc_base" date="2017-05-21T15:08:27+02:00">
+        <header/>
+        <body>
+            <trans-unit id="header.find">
+                <source>Suche nach</source>
+            </trans-unit>
+            <trans-unit id="header.find_in">
+                <source>in</source>
+            </trans-unit>
+            <trans-unit id="napi_object.institution">
+                <source>Institution</source>
+            </trans-unit>
+            <trans-unit id="napi_object.address">
+                <source>Adresse</source>
+            </trans-unit>
+            <trans-unit id="napi_object.person">
+                <source>Person</source>
+            </trans-unit>
+            <trans-unit id="napi_object.event">
+                <source>Veranstaltung</source>
+            </trans-unit>
+            <trans-unit id="napi_object.offertory">
+                <source>Kollekten-Projekt</source>
+            </trans-unit>
+
+            <trans-unit id="napi_objects.institution">
+                <source>Institutionen</source>
+            </trans-unit>
+            <trans-unit id="napi_objects.address">
+                <source>Adressen</source>
+            </trans-unit>
+            <trans-unit id="napi_objects.person">
+                <source>Personen</source>
+            </trans-unit>
+            <trans-unit id="napi_objects.event">
+                <source>Veranstaltungen</source>
+            </trans-unit>
+            <trans-unit id="napi_objects.offertory">
+                <source>Kollekten-Projekte</source>
+            </trans-unit>
+
+            <trans-unit id="search.button">
+                <source>Suchen</source>
+            </trans-unit>
+            <trans-unit id="search.placeholder">
+                <source>Suchbegriff</source>
+            </trans-unit>
+            <trans-unit id="search.hint">
+                <source>Geben Sie bitte einen Suchbegriff ein</source>
+            </trans-unit>
+            <trans-unit id="search.feedback">
+                <source>Die Suche ergab leider keinen Treffer</source>
+            </trans-unit>
+        </body>
+    </file>
+</xliff>

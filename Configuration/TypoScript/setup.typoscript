@@ -1,0 +1,29 @@
+# ==============================================
+# FE-Plugin configuration for EXT:nkc_base
+# ==============================================
+plugin.tx_nkcbase {
+    view {
+        widget.Nordkirche\NkcBase\ViewHelpers\Widget\PaginateViewHelper.templateRootPath = EXT:nkc_base/Resources/Private/Templates/
+    }
+
+    settings {
+        paginate {
+            itemsPerPage = 20
+            insertAbove = 1
+            insertBelow = 1
+            templatePath =
+            prevNextHeaderTags = 1
+            maximumNumberOfLinks = 3
+        }
+    }
+}
+
+lib.contentElement {
+    layoutRootPaths.10 = EXT:nkc_base/Resources/Private/Extensions/fluid_styled_content/Layouts/
+}
+
+page {
+    includeJSFooter {
+        ajaxPagination = EXT:nkc_base/Resources/Public/JavaScript/ajaxPagination.js
+    }
+}

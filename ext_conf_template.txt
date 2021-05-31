@@ -1,0 +1,29 @@
+# cat=basic/enable; type=string; label=NAPI Hostname
+NDK_NAPI_HOST =
+
+# cat=basic/enable; type=string; label=NAPI Port
+NDK_NAPI_PORT =
+
+# cat=basic/enable; type=string; label=NAPI Path
+NDK_NAPI_PATH =
+
+# cat=basic/enable; type=string; label=NAPI Protocol
+NDK_NAPI_PROTOCOL =
+
+# cat=basic/enable; type=string; label=NAPI Version
+NDK_NAPI_VERSION =
+
+# cat=basic/enable; type=string; label=HTTP AUTH - Username (optional)
+NDK_HTTP_AUTH_USERNAME =
+
+# cat=basic/enable; type=string; label=HTTP AUTH - Password (optional)
+NDK_HTTP_AUTH_PASSWORD =
+
+# cat=basic/enable; type=integer; label=NAPI User ID
+NDK_NAPI_USER_ID =
+
+# cat=basic/enable; type=string; label=NAPI Access Token
+NDK_NAPI_ACCESS_TOKEN =
+
+# cat=basic/enable; type=string; label=Log NAPI requests into file (set empty to disable logging)
+NDK_LOG_FILE =
