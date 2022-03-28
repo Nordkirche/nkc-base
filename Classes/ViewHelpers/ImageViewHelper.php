@@ -53,8 +53,6 @@ class ImageViewHelper extends AbstractTagBasedViewHelper
         if (!$image && $src) {
             $image = \Nordkirche\NkcBase\Service\ApiService::get()->factory(Image::class);
             $image->setUrl($src);
-        } else {
-            return '';
         }
 
         try {
