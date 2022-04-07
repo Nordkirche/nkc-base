@@ -12,6 +12,9 @@ namespace Nordkirche\NkcBase\Command;
  *  (c) 2017 Holger McCloy <mccloy@netzleuchten.com>, netzleuchten GmbH
  *
  ***/
+use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
+use Nordkirche\NkcAddress\Controller\MapController;
+use Nordkirche\NkcEvent\Controller\EventController;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -105,8 +108,8 @@ class MapCacheCommandController extends Command
         $io = new SymfonyStyle($input, $output);
         $io->title('Start map cache warmup');
 
-        $this->objectManager = GeneralUtility::makeInstance(\TYPO3\CMS\Extbase\Object\ObjectManager::class);
-        $persistenceManager = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(\TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager::class);
+        $this->objectManager = GeneralUtility::makeInstance(ObjectManager::class);
+        $persistenceManager = GeneralUtility::makeInstance(PersistenceManager::class);
 
         if (trim($contentUids)) {
             foreach (GeneralUtility::trimExplode(',', $contentUids) as $uid) {
@@ -140,14 +143,14 @@ class MapCacheCommandController extends Command
             $className = false;
 
             if ($content['list_type'] == 'nkcaddress_map') {
-                /** @var \Nordkirche\NkcAddress\Controller\MapController $controller */
-                $className = \Nordkirche\NkcAddress\Controller\MapController::class;
+                /** @var MapController $controller */
+                $className = MapController::class;
             } elseif ($content['list_type'] == 'nkcevent_map') {
                 /** @var \Nordkirche\NkcEvent\Controller\MapController $controller */
                 $className = \Nordkirche\NkcEvent\Controller\MapController::class;
             } elseif ($content['list_type'] == 'nkcevent_main') {
-                /** @var \Nordkirche\NkcEvent\Controller\EventController $controller */
-                $className = \Nordkirche\NkcEvent\Controller\EventController::class;
+                /** @var EventController $controller */
+                $className = EventController::class;
             }
 
             if ($className) {
@@ -169,7 +172,7 @@ class MapCacheCommandController extends Command
     {
         $ffData = [];
 
-        $flexform = \TYPO3\CMS\Core\Utility\GeneralUtility::xml2array($content['pi_flexform']);
+        $flexform = GeneralUtility::xml2array($content['pi_flexform']);
 
         foreach ($flexform['data'] as $sheet => $sheetData) {
             foreach ($sheetData['lDEF'] as $fieldname => $fieldData) {

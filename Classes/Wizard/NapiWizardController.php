@@ -2,6 +2,8 @@
 
 namespace Nordkirche\NkcBase\Wizard;
 
+use Nordkirche\Ndk\Domain\Repository\AbstractRepository;
+use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\NkcBase\Service\ApiService;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -51,7 +53,7 @@ class NapiWizardController extends AbstractWizardController
     protected $localLang = 'LLL:EXT:nkc_base/Resources/Private/Language/locallang.xlf:';
 
     /**
-     * @var \Nordkirche\Ndk\Domain\Repository\AbstractRepository
+     * @var AbstractRepository
      */
     protected $repository;
 
@@ -178,7 +180,7 @@ class NapiWizardController extends AbstractWizardController
     /**
      * @param array $allowedObjects
      * @return string
-     * @throws \Nordkirche\NkcBase\Exception\ApiException
+     * @throws ApiException
      */
     private function getItems($allowedObjects)
     {

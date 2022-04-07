@@ -15,6 +15,8 @@
 
 namespace Nordkirche\NkcBase\CustomField;
 
+use Nordkirche\NkcBase\Exception\ApiException;
+use TYPO3\CMS\Core\Page\PageRenderer;
 use Nordkirche\Ndk\Service\NapiService;
 use Nordkirche\NkcBase\Service\ApiService;
 use TYPO3\CMS\Backend\Form\Element\AbstractFormElement;
@@ -105,11 +107,11 @@ class Selector extends AbstractFormElement
      *
      * @return array As defined in initializeResultArray() of AbstractNode
      * @throws \RuntimeException
-     * @throws \Nordkirche\NkcBase\Exception\ApiException
+     * @throws ApiException
      */
     public function render()
     {
-        $pageRenderer = GeneralUtility::makeInstance(\TYPO3\CMS\Core\Page\PageRenderer::class);
+        $pageRenderer = GeneralUtility::makeInstance(PageRenderer::class);
         $pageRenderer->loadRequireJsModule('TYPO3/CMS/NkcBase/backend');
 
         $languageService = $this->getLanguageService();
@@ -418,7 +420,7 @@ class Selector extends AbstractFormElement
     /**
      * @param array $selectedItems
      * @return array
-     * @throws \Nordkirche\NkcBase\Exception\ApiException
+     * @throws ApiException
      */
     private function getObjects($selectedItems)
     {

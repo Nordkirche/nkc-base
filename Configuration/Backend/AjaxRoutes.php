@@ -1,8 +1,9 @@
 <?php
 
+use Nordkirche\NkcBase\Controller\AjaxController;
 return [
     'NkcBase::suggest' => [
         'path' => '/nkc-base/suggest',
-        'target' => \Nordkirche\NkcBase\Controller\AjaxController::class . '::suggest',
+        'target' => AjaxController::class . '::suggest',
     ],
 ];

@@ -14,6 +14,7 @@ namespace Nordkirche\NkcBase\ViewHelpers\Widget\Controller;
  *
  * The TYPO3 project - inspiring people to share!
  */
+use Nordkirche\Ndk\Service\Result;
 use TYPO3\CMS\Core\Utility\ArrayUtility;
 use TYPO3\CMS\Fluid\Core\Widget\AbstractWidgetController;
 
@@ -35,7 +36,7 @@ class PaginateController extends AbstractWidgetController
     ];
 
     /**
-     * @var \Nordkirche\Ndk\Service\Result
+     * @var Result
      */
     protected $objects;
 
@@ -170,7 +171,7 @@ class PaginateController extends AbstractWidgetController
     protected function prepareObjectsSlice($itemsPerPage, $offset)
     {
         $modifiedObjects = [];
-        if ($this->objects instanceof \Nordkirche\Ndk\Service\Result) {
+        if ($this->objects instanceof Result) {
             foreach ($this->objects as $object) {
                 $modifiedObjects[] = $object;
             }

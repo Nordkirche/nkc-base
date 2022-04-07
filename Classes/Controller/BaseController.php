@@ -2,6 +2,11 @@
 
 namespace Nordkirche\NkcBase\Controller;
 
+use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
+use Nordkirche\Ndk\Domain\Query\AbstractQuery;
+use Nordkirche\Ndk\Domain\Query\InstitutionQuery;
+use Nordkirche\Ndk\Domain\Query\PersonQuery;
+use TYPO3\CMS\Extbase\Configuration\ConfigurationManager;
 use Nordkirche\Ndk\Api;
 use Nordkirche\Ndk\Domain\Model\Geocode;
 use Nordkirche\Ndk\Domain\Query\PageQuery;
@@ -13,16 +18,16 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
 
-class BaseController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
+class BaseController extends ActionController
 {
 
     /**
-     * @var \Nordkirche\Ndk\Api
+     * @var Api
      */
     protected $api;
 
     /**
-     * @var \Nordkirche\Ndk\Service\NapiService
+     * @var NapiService
      */
     protected $napiService;
 
@@ -43,7 +48,7 @@ class BaseController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
     /**
      * Set pagination parameters in query
      *
-     * @param \Nordkirche\Ndk\Domain\Query\AbstractQuery $query
+     * @param AbstractQuery $query
      * @param int $currentPage
      * @param bool $mergedResult
      */
@@ -185,7 +190,7 @@ class BaseController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
     /**
      * Set filter in query
      *
-     * @param \Nordkirche\Ndk\Domain\Query\InstitutionQuery $query
+     * @param InstitutionQuery $query
      * @param string $filter
      * @param string $selectOption
      */
@@ -238,7 +243,7 @@ class BaseController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
     /**
      * Set filter in query
      *
-     * @param \Nordkirche\Ndk\Domain\Query\PersonQuery $query
+     * @param PersonQuery $query
      * @param string $filter
      */
     public function setPersonInstitutionFilter($query, $filter)
@@ -296,7 +301,7 @@ class BaseController extends \TYPO3\CMS\Extbase\Mvc\Controller\ActionController
     public function getTypoScriptConfiguration()
     {
         $objectManager = GeneralUtility::makeInstance(ObjectManager::class);
-        $configurationManager = $objectManager->get(\TYPO3\CMS\Extbase\Configuration\ConfigurationManager::class);
+        $configurationManager = $objectManager->get(ConfigurationManager::class);
         $typoScriptService = $objectManager->get(TypoScriptService::class);
         return $typoScriptService->convertTypoScriptArrayToPlainArray($configurationManager->getConfiguration(ConfigurationManagerInterface::CONFIGURATION_TYPE_FULL_TYPOSCRIPT));
     }

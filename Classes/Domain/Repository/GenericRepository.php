@@ -2,6 +2,7 @@
 
 namespace Nordkirche\NkcBase\Domain\Repository;
 
+use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\NkcBase\Service\ApiService;
 use SIMONKOEHLER\Slug\Domain\Repository\GenericRepositoryInterface;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
@@ -15,7 +16,7 @@ class GenericRepository implements GenericRepositoryInterface
      * @param array $routeFieldResultNames
      * @param string $routeFieldResult
      * @return string
-     * @throws \Nordkirche\NkcBase\Exception\ApiException
+     * @throws ApiException
      */
     public static function getRouteFieldResult($object, $id, $routeFieldResultNames, $routeFieldResult): string
     {

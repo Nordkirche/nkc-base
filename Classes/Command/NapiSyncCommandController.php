@@ -9,10 +9,10 @@ namespace Nordkirche\NkcBase\Command;
  * For the full copyright and license information, please read the
  * LICENSE.txt file that was distributed with this source code.
  *
- *  (c) 2017 Holger McCloy &lt;mccloy@netzleuchten.com&gt;, netzleuchten GmbH
+ *  (c) 2017 Holger McCloy <hallo@netzleuchten.com>, netzleuchten GmbH
  *
  ***/
-
+use Nordkirche\Ndk\Api;
 use Nordkirche\Ndk\Domain\Model\Category;
 use Nordkirche\Ndk\Domain\Query\PageQuery;
 use Nordkirche\Ndk\Domain\Repository\CategoryRepository;
@@ -32,12 +32,11 @@ class NapiSyncCommandController extends Command
 
     /**
      * @var \TYPO3\CMS\Extbase\Domain\Repository\CategoryRepository
-     * @TYPO3\CMS\Extbase\Annotation\Inject
      */
     protected $categoryRepository;
 
     /**
-     * @var \Nordkirche\Ndk\Api
+     * @var Api
      */
     protected $api;
 
@@ -62,48 +61,19 @@ class NapiSyncCommandController extends Command
         );
     }
 
-
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @return int
-     * @throws \Exception
+     * @return int|void
+     * @throws \Nordkirche\NkcBase\Exception\ApiException
      */
-    protected function execute(InputInterface $input, OutputInterface $output) {
-
-        $io = new SymfonyStyle($input, $output);
-        $io->title('Start map cache warmup');
-
-        $this->objectManager = GeneralUtility::makeInstance(\TYPO3\CMS\Extbase\Object\ObjectManager::class);
-
-        $persistenceManager = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(\TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager::class);
-
-        $this->categoryRepository = $this->objectManager->get(\TYPO3\CMS\Extbase\Domain\Repository\CategoryRepository::class);
-
+    protected function execute(InputInterface $input, OutputInterface $output)
+    {
         $pid = $input->getArgument('pid');
 
-        $object = 'category';
+        $this->categoryRepository = GeneralUtility::makeInstance(\TYPO3\CMS\Extbase\Domain\Repository\CategoryRepository::class);
 
         $this->api = ApiService::get();
-
-        $importerName = 'import' . ucfirst($object);
-
-        if (method_exists($this, $importerName)) {
-            $this->$importerName($pid);
-        }
-
-        $persistenceManager->persistAll();
-
-        $io->success('Data sync completed.');
-
-        return 0;
-    }
-
-    /**
-     * @param $pid
-     */
-    private function importCategory($pid)
-    {
         $repository = $this->api->factory(CategoryRepository::class);
 
         $query = $this->api->factory(PageQuery::class);
@@ -175,4 +145,5 @@ class NapiSyncCommandController extends Command
         }
         return [];
     }
+
 }

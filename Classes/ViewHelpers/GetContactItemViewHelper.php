@@ -2,6 +2,7 @@
 
 namespace Nordkirche\NkcBase\ViewHelpers;
 
+use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
 use Nordkirche\Ndk\Domain\Model\ContactItem;
 
 /**
@@ -13,7 +14,7 @@ use Nordkirche\Ndk\Domain\Model\ContactItem;
  *  Website: {item.value}
  * </nkc>
  */
-class GetContactItemViewHelper extends \TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper
+class GetContactItemViewHelper extends AbstractViewHelper
 {
     protected $escapeOutput = false;
 
