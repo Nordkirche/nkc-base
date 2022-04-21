@@ -123,6 +123,12 @@ class Selector extends AbstractFormElement
         $row = $this->data['databaseRow'];
         $parameterArray = $this->data['parameterArray'];
         $config = $parameterArray['fieldConf']['config'];
+
+        if (isset($config['arguments'])) {
+            // Flux fallback
+            $config = $config['arguments'];
+        }
+
         $elementName = $parameterArray['itemFormElName'];
 
         $fieldId = StringUtility::getUniqueId('tceforms-multiselect-');
