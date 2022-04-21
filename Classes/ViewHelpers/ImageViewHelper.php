@@ -59,7 +59,7 @@ class ImageViewHelper extends AbstractTagBasedViewHelper
         }
 
         try {
-            $src = $image->render($width, $height);
+            $src = ($image instanceof Image) ? $image->render($width, $height) : '';
         } catch (\InvalidArgumentException $e) {
             $src = $fallbackOnError ?? $this->getFallbackImages(Environment::getContext())['INVALID_ARGUMENTS'] ?? '';
             $this->tag->addAttribute('alt', $e->getMessage());
