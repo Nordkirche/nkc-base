@@ -15,6 +15,12 @@
             <trans-unit id="napi_object.address">
                 <source>Adresse</source>
             </trans-unit>
+            <trans-unit id="napi_object.eventLocation">
+                <source>Veranstaltungsort</source>
+            </trans-unit>
+            <trans-unit id="napi_object.targetGroup">
+                <source>Zielgruppe</source>
+            </trans-unit>
             <trans-unit id="napi_object.person">
                 <source>Person</source>
             </trans-unit>
@@ -30,6 +36,12 @@
             </trans-unit>
             <trans-unit id="napi_objects.address">
                 <source>Adressen</source>
+            </trans-unit>
+            <trans-unit id="napi_objects.eventLocation">
+                <source>Veranstaltungsorten</source>
+            </trans-unit>
+            <trans-unit id="napi_objects.targetGroup">
+                <source>Zielgruppen</source>
             </trans-unit>
             <trans-unit id="napi_objects.person">
                 <source>Personen</source>

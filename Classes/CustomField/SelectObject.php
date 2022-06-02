@@ -10,8 +10,8 @@ class SelectObject
 {
 
     /**
-     * @param $config
-     * @return mixed
+     * @param array $config
+     * @return array
      * @throws ApiException
      */
     public function createNapiItems($config)
