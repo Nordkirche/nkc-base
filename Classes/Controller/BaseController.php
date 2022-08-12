@@ -68,7 +68,8 @@ class BaseController extends ActionController
             }
         } else {
             // Pagination is inactive: use general limit
-            $limit = $this->settings['flexform']['maxItems'] ?: $this->settings['maxItems'];
+            $limit = intval($this->settings['flexform']['maxItems'] ?: $this->settings['maxItems']);
+
             if ($limit) {
                 $query->setPageSize($mergedResult ? floor($limit / 2) : $limit);
             }
