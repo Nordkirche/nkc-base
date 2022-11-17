@@ -11,7 +11,7 @@
     ],
     "require": {
         "typo3/cms-core": "^10.4",
-        "nordkirche/ndk": "^1.7"
+        "nordkirche/ndk": "^1.8"
     },
     "autoload": {
         "psr-4": {
