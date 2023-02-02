@@ -64,12 +64,15 @@ class NapiSyncCommandController extends Command
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @return int|void
+     * @return int
      * @throws \Nordkirche\NkcBase\Exception\ApiException
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $pid = $input->getArgument('pid');
+
+        $io = new SymfonyStyle($input, $output);
+        $io->title('Start napi sync');
 
         $this->categoryRepository = GeneralUtility::makeInstance(\TYPO3\CMS\Extbase\Domain\Repository\CategoryRepository::class);
 
@@ -102,6 +105,10 @@ class NapiSyncCommandController extends Command
                 $this->createCategory($category);
             }
         }
+
+        $io->success('Napi sync completed.');
+
+        return 0;
     }
 
     /**
