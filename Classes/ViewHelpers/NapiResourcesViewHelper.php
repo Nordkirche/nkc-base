@@ -2,6 +2,10 @@
 
 namespace  Nordkirche\NkcBase\ViewHelpers;
 
+use TYPO3Fluid\Fluid\Core\ViewHelper\Exception;
+use Nordkirche\Ndk\Service\NapiService;
+use Nordkirche\NkcBase\Service\ApiService;
+use Nordkirche\Ndk\Domain\Model\ResourcePlaceholder;
 use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
 
 /**
@@ -26,7 +30,7 @@ class NapiResourcesViewHelper extends AbstractViewHelper
     /**
      * Initialize arguments.
      *
-     * @throws \TYPO3Fluid\Fluid\Core\ViewHelper\Exception
+     * @throws Exception
      */
     public function initializeArguments()
     {
@@ -54,13 +58,13 @@ class NapiResourcesViewHelper extends AbstractViewHelper
 
         $as = isset($this->arguments['as']) ? $this->arguments['as'] : 'resources';
 
-        /** @var \Nordkirche\Ndk\Service\NapiService $api */
-        $api = \Nordkirche\NkcBase\Service\ApiService::get()->factory(\Nordkirche\Ndk\Service\NapiService::class);
+        /** @var NapiService $api */
+        $api = ApiService::get()->factory(NapiService::class);
 
         $resources = $api->resolveUrls(explode(',', $this->arguments['resourceString']));
 
         foreach ($resources as $object) {
-            if (!($object instanceof \Nordkirche\Ndk\Domain\Model\ResourcePlaceholder)) {
+            if (!($object instanceof ResourcePlaceholder)) {
                 $collection[] = $object;
             }
         }

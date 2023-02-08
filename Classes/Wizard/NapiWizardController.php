@@ -2,6 +2,8 @@
 
 namespace Nordkirche\NkcBase\Wizard;
 
+use Nordkirche\Ndk\Domain\Repository\AbstractRepository;
+use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\NkcBase\Service\ApiService;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -11,6 +13,7 @@ use TYPO3\CMS\Core\Http\HtmlResponse;
 use TYPO3\CMS\Core\Imaging\Icon;
 use TYPO3\CMS\Core\Localization\LanguageService;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 
 class NapiWizardController extends AbstractWizardController
 {
@@ -51,7 +54,7 @@ class NapiWizardController extends AbstractWizardController
     protected $localLang = 'LLL:EXT:nkc_base/Resources/Private/Language/locallang.xlf:';
 
     /**
-     * @var \Nordkirche\Ndk\Domain\Repository\AbstractRepository
+     * @var AbstractRepository
      */
     protected $repository;
 
@@ -178,7 +181,7 @@ class NapiWizardController extends AbstractWizardController
     /**
      * @param array $allowedObjects
      * @return string
-     * @throws \Nordkirche\NkcBase\Exception\ApiException
+     * @throws ApiException
      */
     private function getItems($allowedObjects)
     {
@@ -247,6 +250,26 @@ class NapiWizardController extends AbstractWizardController
         $html .= '" class="t3js-pageLink">';
         $html .= $item->getLabel();
         $html .= '</a></strong>';
+        return $html;
+    }
+
+    /**
+     * @param $item
+     * @return string
+     */
+    private function renderEventLocation($item)
+    {
+        $html = '<strong><a href="';
+        $html .= (string)$item;
+        $html .= '" class="t3js-pageLink">';
+        $html .= $item->getName();
+        $html .= '</a></strong>';
+        if ($address = $item->getAddress()) {
+            $html .= '<br />';
+            $html .= $address->getStreet() . ', ';
+            $html .= $address->getZipCode() . ' ';
+            $html .= $address->getCity();
+        }
         return $html;
     }
 

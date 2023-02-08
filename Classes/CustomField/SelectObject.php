@@ -2,6 +2,7 @@
 
 namespace Nordkirche\NkcBase\CustomField;
 
+use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\Ndk\Domain\Query\PageQuery;
 use Nordkirche\NkcBase\Service\ApiService;
 
@@ -9,9 +10,9 @@ class SelectObject
 {
 
     /**
-     * @param $config
-     * @return mixed
-     * @throws \Nordkirche\NkcBase\Exception\ApiException
+     * @param array $config
+     * @return array
+     * @throws ApiException
      */
     public function createNapiItems($config)
     {

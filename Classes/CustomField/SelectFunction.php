@@ -2,6 +2,8 @@
 
 namespace Nordkirche\NkcBase\CustomField;
 
+use Nordkirche\NkcBase\Exception\ApiException;
+use Nordkirche\Ndk\Service\NapiService;
 use Nordkirche\NkcBase\Service\ApiService;
 
 class SelectFunction
@@ -10,13 +12,13 @@ class SelectFunction
     /**
      * @param $config
      * @return mixed
-     * @throws \Nordkirche\NkcBase\Exception\ApiException
+     * @throws ApiException
      */
     public function createNapiItems($config)
     {
         if ($uri = $config['row']['settings.singlePersonUid']) {
             $api = ApiService::get();
-            $napi = $api->factory(\Nordkirche\Ndk\Service\NapiService::class);
+            $napi = $api->factory(NapiService::class);
             $person = $napi->resolveUrl($uri);
             foreach ($person->getFunctions() as $object) {
                 if ($object->getInstitution()) {

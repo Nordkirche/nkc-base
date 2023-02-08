@@ -8,6 +8,7 @@ namespace Nordkirche\NkcBase\ViewHelpers;
  * For the full copyright and license information, please read the
  * LICENSE.txt file that was distributed with this source code.
  */
+use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractTagBasedViewHelper;
 use TYPO3\CMS\Core\Page\PageRenderer;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
@@ -30,7 +31,7 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
  * <meta name="keywords" content="news 1, news 2" />
  * </output>
  */
-class MetaTagViewHelper extends \TYPO3Fluid\Fluid\Core\ViewHelper\AbstractTagBasedViewHelper
+class MetaTagViewHelper extends AbstractTagBasedViewHelper
 {
 
     /**

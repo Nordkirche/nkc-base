@@ -2,6 +2,9 @@
 
 namespace Nordkirche\NkcBase\Controller;
 
+use Nordkirche\NkcBase\Exception\ApiException;
+use Nordkirche\Ndk\Domain\Repository\AbstractRepository;
+use Nordkirche\Ndk\Domain\Query\AbstractQuery;
 use Nordkirche\NkcBase\Service\ApiService;
 use Psr\Http\Message\ServerRequestInterface;
 use TYPO3\CMS\Core\Http\JsonResponse;
@@ -13,7 +16,7 @@ class AjaxController
     /**
      * @param ServerRequestInterface $request
      * @return JsonResponse
-     * @throws \Nordkirche\NkcBase\Exception\ApiException
+     * @throws ApiException
      */
     public function suggest(ServerRequestInterface $request): JsonResponse
     {
@@ -64,8 +67,8 @@ class AjaxController
 
     /**
      * @param string $search
-     * @param \Nordkirche\Ndk\Domain\Repository\AbstractRepository $repository
-     * @param \Nordkirche\Ndk\Domain\Query\AbstractQuery $query
+     * @param AbstractRepository $repository
+     * @param AbstractQuery $query
      * @return array
      */
     private function getSuggestions($search, $repository, $query)

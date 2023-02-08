@@ -2,6 +2,10 @@
 
 namespace Nordkirche\NkcBase\Service;
 
+use Nordkirche\NkcBase\Exception\ApiException;
+use Doctrine\Common\Cache\RedisCache;
+use Nordkirche\Ndk\Service\FactoryService;
+use Nordkirche\Ndk\Domain\Query\AbstractQuery;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 use Nordkirche\Ndk\Api;
@@ -22,7 +26,7 @@ class ApiService
 
     /**
      * @return Api
-     * @throws \Nordkirche\NkcBase\Exception\ApiException
+     * @throws ApiException
      */
     public static function get()
     {
@@ -34,7 +38,7 @@ class ApiService
 
     /**
      * @return Api
-     * @throws \Nordkirche\NkcBase\Exception\ApiException
+     * @throws ApiException
      */
     private static function initializeApi()
     {
@@ -69,7 +73,7 @@ class ApiService
                     $redis = new \Redis();
                     $redis->connect($EXT_CONF['NDK_REDIS_CACHE']['host'], $EXT_CONF['NDK_REDIS_CACHE']['port']);
 
-                    $cacheDriver = new \Doctrine\Common\Cache\RedisCache();
+                    $cacheDriver = new RedisCache();
                     $cacheDriver->setRedis($redis);
 
                     $config->setReflectionCacheProvider(clone $cacheDriver);
@@ -79,11 +83,11 @@ class ApiService
 
                 return new Api($config);
             } catch (\Exception $e) {
-                throw new \Nordkirche\NkcBase\Exception\ApiException('Configuration error - please check API configuration', 1495105254);
+                throw new ApiException('Configuration error - please check API configuration', 1495105254);
             }
         } else {
             // Error : configuration missing
-            throw new \Nordkirche\NkcBase\Exception\ApiException('Configuration error - please check API configuration', 1495105254);
+            throw new ApiException('Configuration error - please check API configuration', 1495105254);
         }
     }
 
@@ -102,8 +106,8 @@ class ApiService
 
     /**
      * @param string $object
-     * @return \Nordkirche\Ndk\Service\FactoryService|\Nordkirche\Ndk\Domain\Repository\AbstractRepository
-     * @throws \Nordkirche\NkcBase\Exception\ApiException
+     * @return FactoryService|AbstractRepository
+     * @throws ApiException
      */
     public static function getRepository($object)
     {
@@ -114,13 +118,13 @@ class ApiService
         if (class_exists($classname)) {
             return $api->factory($classname);
         }
-        throw new \Nordkirche\NkcBase\Exception\ApiException('Query error - unknown object ' . $object, 1495179007);
+        throw new ApiException('Query error - unknown object ' . $object, 1495179007);
     }
 
     /**
      * @param $object
-     * @return \Nordkirche\Ndk\Domain\Query\AbstractQuery
-     * @throws \Nordkirche\NkcBase\Exception\ApiException
+     * @return AbstractQuery
+     * @throws ApiException
      */
     public static function getQuery($object)
     {
@@ -129,7 +133,7 @@ class ApiService
         if (class_exists($classname)) {
             return  new $classname();
         }
-        throw new \Nordkirche\NkcBase\Exception\ApiException('Configuration error - unknown object ' . $object, 1495179007);
+        throw new ApiException('Configuration error - unknown object ' . $object, 1495179007);
     }
 
     /**

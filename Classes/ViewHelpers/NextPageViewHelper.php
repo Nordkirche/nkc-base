@@ -2,6 +2,7 @@
 
 namespace Nordkirche\NkcBase\ViewHelpers;
 
+use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
 use Nordkirche\Ndk\Domain\Query\AbstractQuery;
 
 /**
@@ -13,7 +14,7 @@ use Nordkirche\Ndk\Domain\Query\AbstractQuery;
  * <nkcbase:nextPage query="{query}"></nkcbase:nextPage>
  * </code>
  */
-class NextPageViewHelper extends \TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper
+class NextPageViewHelper extends AbstractViewHelper
 {
     /**
      * Initialize ViewHelper arguments

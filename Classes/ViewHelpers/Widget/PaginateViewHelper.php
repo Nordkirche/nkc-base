@@ -14,6 +14,9 @@ namespace Nordkirche\NkcBase\ViewHelpers\Widget;
  *
  * The TYPO3 project - inspiring people to share!
  */
+use Nordkirche\NkcBase\ViewHelpers\Widget\Controller\PaginateController;
+use TYPO3Fluid\Fluid\Core\ViewHelper\Exception;
+use Nordkirche\Ndk\Service\Result;
 use TYPO3\CMS\Fluid\Core\Widget\AbstractWidgetViewHelper;
 
 /**
@@ -49,14 +52,14 @@ use TYPO3\CMS\Fluid\Core\Widget\AbstractWidgetViewHelper;
 class PaginateViewHelper extends AbstractWidgetViewHelper
 {
     /**
-     * @var \Nordkirche\NkcBase\ViewHelpers\Widget\Controller\PaginateController
+     * @var PaginateController
      */
     protected $controller;
 
     /**
-     * @param \Nordkirche\NkcBase\ViewHelpers\Widget\Controller\PaginateController $controller
+     * @param PaginateController $controller
      */
-    public function injectPaginateController(\Nordkirche\NkcBase\ViewHelpers\Widget\Controller\PaginateController $controller)
+    public function injectPaginateController(PaginateController $controller)
     {
         $this->controller = $controller;
     }
@@ -65,7 +68,7 @@ class PaginateViewHelper extends AbstractWidgetViewHelper
      * Initialize arguments.
      *
      * @api
-     * @throws \TYPO3Fluid\Fluid\Core\ViewHelper\Exception
+     * @throws Exception
      */
     public function initializeArguments()
     {
@@ -83,7 +86,7 @@ class PaginateViewHelper extends AbstractWidgetViewHelper
     {
         $objects = $this->arguments['objects'];
 
-        if (!($objects instanceof \Nordkirche\Ndk\Service\Result)) {
+        if (!($objects instanceof Result)) {
             throw new \UnexpectedValueException('Supplied object type ' . get_class($objects) . ' must be an Ndk Result.', 1454510731);
         }
         return $this->initiateSubRequest();

@@ -2,6 +2,9 @@
 
 namespace Nordkirche\NkcBase\ViewHelpers;
 
+use Nordkirche\NkcBase\Exception\ApiException;
+use Nordkirche\NkcBase\Service\ApiService;
+use TYPO3\CMS\Core\Core\Environment;
 use Nordkirche\Ndk\Domain\Model\File\Image;
 use TYPO3\CMS\Core\Core\ApplicationContext;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
@@ -39,7 +42,7 @@ class ImageViewHelper extends AbstractTagBasedViewHelper
      * Accepts NDK image objects and requests resized versions
      *
      * @return string
-     * @throws \Nordkirche\NkcBase\Exception\ApiException
+     * @throws ApiException
      */
     public function render(): string
     {
@@ -51,17 +54,17 @@ class ImageViewHelper extends AbstractTagBasedViewHelper
         $fallbackOnError = $this->arguments['fallbackOnError'];
 
         if (!$image && $src) {
-            $image = \Nordkirche\NkcBase\Service\ApiService::get()->factory(Image::class);
+            $image = ApiService::get()->factory(Image::class);
             $image->setUrl($src);
         }
 
         try {
-            $src = $image->render($width, $height);
+            $src = ($image instanceof Image) ? $image->render($width, $height) : '';
         } catch (\InvalidArgumentException $e) {
-            $src = $fallbackOnError ?? $this->getFallbackImages(GeneralUtility::getApplicationContext())['INVALID_ARGUMENTS'] ?? '';
+            $src = $fallbackOnError ?? $this->getFallbackImages(Environment::getContext())['INVALID_ARGUMENTS'] ?? '';
             $this->tag->addAttribute('alt', $e->getMessage());
         } catch (\Exception $e) {
-            $src = $fallbackOnError ?? $this->getFallbackImages(GeneralUtility::getApplicationContext())['MISSING_IMAGE'] ?? '';
+            $src = $fallbackOnError ?? $this->getFallbackImages(Environment::getContext())['MISSING_IMAGE'] ?? '';
             $this->tag->addAttribute('alt', $e->getMessage());
         }
 

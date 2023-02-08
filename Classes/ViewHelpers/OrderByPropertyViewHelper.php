@@ -2,6 +2,8 @@
 
 namespace  Nordkirche\NkcBase\ViewHelpers;
 
+use TYPO3Fluid\Fluid\Core\ViewHelper\Exception;
+use Nordkirche\Ndk\Service\Result;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
 
@@ -22,7 +24,7 @@ class OrderByPropertyViewHelper extends AbstractViewHelper
     /**
      * Initialize arguments.
      *
-     * @throws \TYPO3Fluid\Fluid\Core\ViewHelper\Exception
+     * @throws Exception
      */
     public function initializeArguments()
     {
@@ -37,7 +39,7 @@ class OrderByPropertyViewHelper extends AbstractViewHelper
      */
     public function render()
     {
-        /** @var \Nordkirche\Ndk\Service\Result $collection */
+        /** @var Result $collection */
         $collection = $this->arguments['collection'];
         $getterName = 'get' . ucfirst($this->arguments['property']);
         $indexName = $this->arguments['property'];
@@ -47,7 +49,7 @@ class OrderByPropertyViewHelper extends AbstractViewHelper
             $collection = $this->renderChildren();
         }
 
-        $doOrdering = ($collection instanceof \Nordkirche\Ndk\Service\Result) ? ($collection->count() > 0) : ($collection instanceof \Countable && (count($collection) > 0));
+        $doOrdering = ($collection instanceof Result) ? ($collection->count() > 0) : ($collection instanceof \Countable && (count($collection) > 0));
 
         $newCollection = [];
 
