@@ -17,5 +17,10 @@
         "psr-4": {
             "Nordkirche\\NkcBase\\": "Classes"
         }
+    },
+    "extra": {
+        "typo3/cms": {
+            "extension-key": "nkc_base"
+        }
     }
 }
