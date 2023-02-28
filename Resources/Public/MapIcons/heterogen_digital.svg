@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="32px" height="43px" viewBox="0 0 32 43" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<svg width="24px" height="32px" viewBox="0 0 24 32" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
     <title>heterogen_digital</title>
     <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
         <g id="heterogen_digital" fill-rule="nonzero">
-            <polygon id="Fill-1" fill="#EA3080" points="0 0 3.19932266 33.0767436 12.8006773 33.0767436 16 43 19.2004516 33.0767436 28.7995485 33.0767436 32 0"></polygon>
-            <g id="Group" transform="translate(5.818182, 14.000000)" fill="#FFFFFF">
-                <ellipse id="Oval" cx="1.93939394" cy="2" rx="1.93939394" ry="2"></ellipse>
-                <ellipse id="Oval-Copy" cx="17.4545455" cy="2" rx="1.93939394" ry="2"></ellipse>
-                <ellipse id="Oval-Copy" cx="9.69696968" cy="2" rx="1.93939394" ry="2"></ellipse>
+            <polygon id="Fill-1" fill="#EA3080" points="0 0 2.39949199 24.6152511 9.60050797 24.6152511 12 32 14.4003387 24.6152511 21.5996614 24.6152511 24 0"></polygon>
+            <g id="Group" transform="translate(5.000000, 11.000000)" fill="#FFFFFF">
+                <ellipse id="Oval" cx="1.5" cy="1.5" rx="1.5" ry="1.5"></ellipse>
+                <ellipse id="Oval-Copy" cx="13.5" cy="1.5" rx="1.5" ry="1.5"></ellipse>
+                <ellipse id="Oval-Copy" cx="7.49999997" cy="1.5" rx="1.5" ry="1.5"></ellipse>
             </g>
         </g>
     </g>
