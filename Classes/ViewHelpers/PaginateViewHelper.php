@@ -1,28 +1,19 @@
 <?php
 
-namespace Nordkirche\NkcBase\ViewHelpers\Widget\Controller;
+namespace Nordkirche\NkcBase\ViewHelpers;
 
-/*
- * This file is part of the TYPO3 CMS project.
- *
- * It is free software; you can redistribute it and/or modify it under
- * the terms of the GNU General Public License, either version 2
- * of the License, or any later version.
- *
- * For the full copyright and license information, please read the
- * LICENSE.txt file that was distributed with this source code.
- *
- * The TYPO3 project - inspiring people to share!
- */
-use Nordkirche\Ndk\Service\Result;
 use TYPO3\CMS\Core\Utility\ArrayUtility;
-use TYPO3\CMS\Fluid\Core\Widget\AbstractWidgetController;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Extbase\Persistence\ObjectStorage;
+use TYPO3\CMS\Extbase\Persistence\QueryResultInterface;
+use TYPO3\CMS\Fluid\View\StandaloneView;
+use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
+use TYPO3Fluid\Fluid\Core\ViewHelper\Exception;
 
-/**
- * Class PaginateController
- */
-class PaginateController extends AbstractWidgetController
-{
+class PaginateViewHelper extends AbstractViewHelper {
+
+    protected $escapeOutput = false;
+
     /**
      * @var array
      */
@@ -36,7 +27,7 @@ class PaginateController extends AbstractWidgetController
     ];
 
     /**
-     * @var Result
+     * @var QueryResultInterface|ObjectStorage|array
      */
     protected $objects;
 
@@ -66,15 +57,37 @@ class PaginateController extends AbstractWidgetController
     protected $displayRangeEnd;
 
     /**
+     * @var StandaloneView
+     */
+    protected $view;
+
+    /**
+     * Initialize arguments.
+     *
+     * @api
+     * @throws Exception
+     */
+    public function initializeArguments()
+    {
+        parent::initializeArguments();
+        $this->registerArgument('objects', 'mixed', 'Object', true);
+        $this->registerArgument('as', 'string', 'as', true);
+        $this->registerArgument('configuration', 'array', 'configuration', false, ['itemsPerPage' => 10, 'insertAbove' => false, 'insertBelow' => true, 'maximumNumberOfLinks' => 99]);
+    }
+
+    /**
      * Initializes the current information on which page the visitor is.
      */
     public function initializeAction()
     {
-        $this->objects = $this->widgetConfiguration['objects'];
-        ArrayUtility::mergeRecursiveWithOverrule($this->configuration, $this->widgetConfiguration['configuration'], false);
+        $this->objects = $this->arguments['objects'];
+        ArrayUtility::mergeRecursiveWithOverrule($this->configuration, $this->arguments['configuration'], false);
         $itemsPerPage = (int)$this->configuration['itemsPerPage'];
-        $this->numberOfPages = $itemsPerPage > 0 ? ceil($this->objects->getRecordCount() / $itemsPerPage) : 0;
+        $this->numberOfPages = $itemsPerPage > 0 ? ceil(count($this->objects) / $itemsPerPage) : 0;
         $this->maximumNumberOfLinks = (int)$this->configuration['maximumNumberOfLinks'];
+
+        $this->getStandaloneView();
+
     }
 
     /**
@@ -94,17 +107,19 @@ class PaginateController extends AbstractWidgetController
             // modify query
             $itemsPerPage = (int)$this->configuration['itemsPerPage'];
             $offset = 0;
+            if ($this->objects instanceof QueryResultInterface) {
+                $offset = (int)$this->objects->getQuery()->getOffset();
+            }
             if ($this->currentPage > 1) {
-                $offset = ((int)($itemsPerPage * ($this->currentPage - 1)));
+                $offset = $offset + ((int)($itemsPerPage * ($this->currentPage - 1)));
             }
             $modifiedObjects = $this->prepareObjectsSlice($itemsPerPage, $offset);
         }
         $this->view->assign('contentArguments', [
-            $this->widgetConfiguration['as'] => $modifiedObjects
+            $this->arguments['as'] => $modifiedObjects
         ]);
         $this->view->assign('configuration', $this->configuration);
         $this->view->assign('pagination', $this->buildPagination());
-        $this->view->assign('currentPage', $this->currentPage);
     }
 
     /**
@@ -165,23 +180,67 @@ class PaginateController extends AbstractWidgetController
      * @param int $itemsPerPage
      * @param int $offset
      *
-     * @return array
+     * @return array|QueryResultInterface
      * @throws \InvalidArgumentException
      */
     protected function prepareObjectsSlice($itemsPerPage, $offset)
     {
-        $modifiedObjects = [];
-        if ($this->objects instanceof Result) {
-            foreach ($this->objects as $object) {
-                $modifiedObjects[] = $object;
+        if ($this->objects instanceof QueryResultInterface) {
+            $currentRange = $offset + $itemsPerPage;
+            $endOfRange = min($currentRange, count($this->objects));
+            $query = $this->objects->getQuery();
+            $query->setLimit($itemsPerPage);
+            if ($offset > 0) {
+                $query->setOffset($offset);
+                if ($currentRange > $endOfRange) {
+                    $newLimit = $endOfRange - $offset;
+                    $query->setLimit($newLimit);
+                }
+            }
+            $modifiedObjects = $query->execute();
+            return $modifiedObjects;
+        }
+        if ($this->objects instanceof ObjectStorage) {
+            $modifiedObjects = [];
+            $objectArray = $this->objects->toArray();
+            $endOfRange = min($offset + $itemsPerPage, count($objectArray));
+            for ($i = $offset; $i < $endOfRange; $i++) {
+                $modifiedObjects[] = $objectArray[$i];
             }
             return $modifiedObjects;
         }
+        if (is_array($this->objects)) {
+            $modifiedObjects = array_slice($this->objects, $offset, $itemsPerPage);
+            return $modifiedObjects;
+        }
         throw new \InvalidArgumentException(
-            'The view helper "' . get_class($this)
-                . '" accepts as argument \Nordkirche\Ndk\Service\Result. '
-                . 'given: ' . get_class($this->objects),
+            'The ViewHelper "' . static::class
+            . '" accepts as argument "QueryResultInterface", "\SplObjectStorage", "ObjectStorage" or an array. '
+            . 'given: ' . get_class($this->objects),
             1385547291
         );
     }
+
+    /**
+     * @return mixed|\Psr\Log\LoggerAwareInterface|\TYPO3\CMS\Core\SingletonInterface|StandaloneView
+     * @throws \Exception
+     */
+    private function getStandaloneView()
+    {
+        $view = GeneralUtility::makeInstance(StandaloneView::class);
+
+        $settings = GeneralUtility::removeDotsFromTS($GLOBALS['TSFE']->tmpl->setup);
+
+        if (isset($settings['plugin']['tx_nkgooglemap_pi1']['view'])) {
+            $view->setTemplateRootPaths($settings['plugin']['tx_nkcbase']['view']['templateRootPaths']);
+            $view->setLayoutRootPaths($settings['plugin']['tx_nkcbase']['view']['layoutRootPaths']);
+            $view->setPartialRootPaths($settings['plugin']['tx_nkcbase']['view']['partialRootPaths']);
+            $view->setTemplate('Index');
+        } else {
+            throw new \Exception('TypoScript configuration missing. Please include static TS template.', 1678633790);
+        }
+
+        $this->view = $view;
+    }
+
 }

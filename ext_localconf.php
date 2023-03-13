@@ -1,6 +1,6 @@
 <?php
 
-defined('TYPO3_MODE') || die('Access denied.');
+defined('TYPO3') || die('Access denied.');
 
 $GLOBALS['TYPO3_CONF_VARS']['EXT']['slug']['repository']['nkc_base'] = \Nordkirche\NkcBase\Domain\Repository\GenericRepository::class;
 

@@ -27,6 +27,7 @@ use TYPO3\CMS\Core\Localization\LanguageService;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\MathUtility;
 use TYPO3\CMS\Core\Utility\StringUtility;
+use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 
 /**
  * Generation of elements of the type "group"
@@ -123,13 +124,12 @@ class Selector extends AbstractFormElement
         $row = $this->data['databaseRow'];
         $parameterArray = $this->data['parameterArray'];
         $config = $parameterArray['fieldConf']['config'];
+        $elementName = $parameterArray['itemFormElName'];
 
         if (isset($config['arguments'])) {
             // Flux fallback
             $config = $config['arguments'];
         }
-
-        $elementName = $parameterArray['itemFormElName'];
 
         $fieldId = StringUtility::getUniqueId('tceforms-multiselect-');
         $md5OfElName = str_replace('tceforms-multiselect-', '', $fieldId);
@@ -137,7 +137,7 @@ class Selector extends AbstractFormElement
         $allowed = $config['allowed'];
         $selectedItems = $this->getObjects(GeneralUtility::trimExplode(',', $parameterArray['itemFormElValue']));
 
-        $selectedItemsCount = count($selectedItems);
+        // $selectedItemsCount = count($selectedItems);
 
         $hmac = GeneralUtility::hmac('wizard_napi', $allowed);
 
@@ -145,14 +145,13 @@ class Selector extends AbstractFormElement
         $wizardUrl = $uriBuilder->buildUriFromRoute('wizard_napi', ['P' => ['field' => $md5OfElName, 'hmac' => $hmac, 'allowed' => $allowed]]);
         $wizardLink = sprintf("this.blur();vHWin=window.open('%s','popUpID%s','height=600,width=800,status=0,menubar=0,scrollbars=1');vHWin.focus();return false;", $wizardUrl, $hmac);
 
-        $maxItems = $config['maxitems'];
-        $autoSizeMax = MathUtility::forceIntegerInRange($config['autoSizeMax'], 0);
-        $size = 5;
-        if (isset($config['size'])) {
-            $size = (int)$config['size'];
-        }
-        if ($autoSizeMax >= 1) {
-            $size = MathUtility::forceIntegerInRange($selectedItemsCount + 1, MathUtility::forceIntegerInRange($size, 1), $autoSizeMax);
+        $maxItems = isset($config['maxitems']) ?: '';
+
+        $size = (int)($config['size'] ?? 5);
+        $autoSizeMax = (int)($config['autoSizeMax'] ?? 0);
+        if ($autoSizeMax > 0) {
+            $size = MathUtility::forceIntegerInRange($size, 1);
+            $size = MathUtility::forceIntegerInRange(count($selectedItems) + 1, $size, $autoSizeMax);
         }
 
         $internalType = 'db';
@@ -271,14 +270,6 @@ class Selector extends AbstractFormElement
         if ($maxItems !== 1 && $size !== 1) {
             $selectorAttributes['multiple'] = 'multiple';
         }
-
-        $fieldControlResult = $this->renderFieldControl();
-        $fieldControlHtml = $fieldControlResult['html'];
-        $resultArray = $this->mergeChildReturnIntoExistingResult($resultArray, $fieldControlResult, false);
-
-        $fieldWizardResult = $this->renderFieldWizard();
-        $fieldWizardHtml = $fieldWizardResult['html'];
-        $resultArray = $this->mergeChildReturnIntoExistingResult($resultArray, $fieldWizardResult, false);
 
         $html = [];
         $html[] = '<div class="formengine-field-item t3js-formengine-field-item">';
@@ -400,7 +391,9 @@ class Selector extends AbstractFormElement
 				<span alt="Browse for records" title="Browse for records">
 					<span class="t3js-icon icon icon-size-small icon-state-default icon-actions-insert-record" data-identifier="actions-insert-record">
 						<span class="icon-markup">
-							<img src="/typo3/sysext/core/Resources/Public/Icons/T3Icons/actions/actions-insert-record.svg" width="16" height="16">
+							<svg class="icon-color">
+							    <use xlink:href="/typo3/sysext/core/Resources/Public/Icons/T3Icons/sprites/actions.svg#actions-folder"></use>
+							</svg>
 						</span>
 					</span>
 				</span>

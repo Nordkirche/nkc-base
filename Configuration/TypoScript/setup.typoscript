@@ -3,7 +3,9 @@
 # ==============================================
 plugin.tx_nkcbase {
     view {
-        widget.Nordkirche\NkcBase\ViewHelpers\Widget\PaginateViewHelper.templateRootPath = EXT:nkc_base/Resources/Private/Templates/
+        templateRootPaths.0 = EXT:nkc_base/Resources/Private/Templates/
+        partialRootPaths.0 = EXT:nkc_base/Resources/Private/Partials/
+        layoutRootPaths.0 = EXT:nkc_base/Resources/Private/Layouts/
     }
 
     settings {

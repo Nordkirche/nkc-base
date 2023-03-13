@@ -12,6 +12,7 @@ namespace Nordkirche\NkcBase\Command;
  *  (c) 2017 Holger McCloy <hallo@netzleuchten.com>, netzleuchten GmbH
  *
  ***/
+use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\Ndk\Api;
 use Nordkirche\Ndk\Domain\Model\Category;
 use Nordkirche\Ndk\Domain\Query\PageQuery;
@@ -65,7 +66,7 @@ class NapiSyncCommandController extends Command
      * @param InputInterface $input
      * @param OutputInterface $output
      * @return int
-     * @throws \Nordkirche\NkcBase\Exception\ApiException
+     * @throws ApiException
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
