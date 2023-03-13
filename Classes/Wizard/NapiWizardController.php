@@ -2,6 +2,8 @@
 
 namespace Nordkirche\NkcBase\Wizard;
 
+use TYPO3\CMS\Core\Imaging\IconFactory;
+use TYPO3\CMS\Core\Page\PageRenderer;
 use Nordkirche\Ndk\Domain\Repository\AbstractRepository;
 use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\NkcBase\Service\ApiService;
@@ -68,7 +70,7 @@ class NapiWizardController extends AbstractWizardController
     /**
      * Constructor
      */
-    public function __construct()
+    public function __construct(private IconFactory $iconFactory, private PageRenderer $pageRenderer)
     {
         $this->init();
     }
@@ -119,13 +121,13 @@ class NapiWizardController extends AbstractWizardController
     {
         $buttonBar = $this->moduleTemplate->getDocHeaderComponent()->getButtonBar();
 
-        $this->moduleTemplate->getPageRenderer()->loadRequireJsModule('jquery');
+        $this->pageRenderer->loadRequireJsModule('jquery');
 
         $closeButton = $buttonBar->makeLinkButton()
             ->setHref('#')
             ->setTitle('Schließen')
             ->setOnClick('window.close();return true;')
-            ->setIcon($this->moduleTemplate->getIconFactory()->getIcon('actions-close', Icon::SIZE_SMALL))
+            ->setIcon($this->iconFactory->getIcon('actions-close', Icon::SIZE_SMALL))
             ->setShowLabelText(true);
         $buttonBar->addButton($closeButton);
 

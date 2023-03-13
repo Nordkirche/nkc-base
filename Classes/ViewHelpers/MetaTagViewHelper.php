@@ -70,7 +70,7 @@ class MetaTagViewHelper extends AbstractTagBasedViewHelper
         // prepend current domain
         if ($forceAbsoluteUrl) {
             $path = $this->arguments['content'];
-            if (!GeneralUtility::isFirstPartOfStr($path, GeneralUtility::getIndpEnv('TYPO3_SITE_URL'))) {
+            if (!\str_starts_with($path, GeneralUtility::getIndpEnv('TYPO3_SITE_URL'))) {
                 $this->tag->addAttribute(
                     'content',
                     rtrim(GeneralUtility::getIndpEnv('TYPO3_SITE_URL'), '/')
