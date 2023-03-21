@@ -1,0 +1,25 @@
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en"
+	  data-namespace-typo3-fluid="true">
+	<f:if condition="{pagination}">
+		<ul>
+			<f:if condition="{pagination.prev}">
+				<li><f:link.action action="list" arguments="{currentPage: pagination.prev.index}">Zurück</f:link.action></li>
+			</f:if>
+			<f:for each="{pagination.pages}" as="page">
+				<li>
+					<f:if condition="{page.current} || {page.gap}">
+						<f:then>
+							{page.index}
+						</f:then>
+						<f:else>
+							<f:link.action action="list" arguments="{currentPage: page.index}">{page.index}</f:link.action>
+						</f:else>
+					</f:if>
+				</li>
+			</f:for>
+			<f:if condition="{pagination.next}">
+				<li><f:link.action action="list" arguments="{currentPage: pagination.next.index}">Weiter</f:link.action></li>
+			</f:if>
+		</ul>
+	</f:if>
+</html>

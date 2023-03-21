@@ -171,7 +171,7 @@ Geben Sie in der Task-Konfiguration die betroffenen Content Elemente an (uid), d
 Sie finden in den ViewHelpern jeweils ein Code-Beispiel zur Verwendung
 
 ## Breaking Changes
-Das Paginate Widget wurde entfernt, da TYPO3 ab Version 11.5 keine Widgets mehr unterstützt. Es wurde durch einen ViewHelper ersetzt, der die gleichen Parameter erwartet.
+Das Paginate Widget wurde entfernt, da TYPO3 ab Version 11.5 keine Widgets mehr unterstützt. Die Nkc Extensions liefern nun ein Array "pagination" an das Template, im Ordner  Partials liegt ein Beispiel dafür, wie man aus diesem Attay eine Paginerung baut.
 
 ## Fluid Styled Content Layout
 Diese Extension bringt ein eigenes Default Layout für Fluid Styled Content mit. Die anderen Nordkirche Extensions, die auf nkc_base basieren, laden Inhalte per AJAX nach und verwendet dafür das TypoScript CONTENT Objekt. Dieses Verfahren sorgt dafür, dass auch bei einer Extbase JSON View ein &lt;div&gt; um den Content gelegt wird. Um das zu vermeiden, gibt es ein leicht angepasstes Layout.
