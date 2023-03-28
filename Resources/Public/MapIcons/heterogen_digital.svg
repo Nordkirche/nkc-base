@@ -1,1 +1,14 @@
-<svg id="event" xmlns="http://www.w3.org/2000/svg" height="42" width="45" viewBox="0 0 42 45"><defs><style>.cls-1{fill:#0098c3;}.cls-2{fill:#63b15a;}.cls-3,.cls-4{fill:#fff;}.cls-3{fill-rule:evenodd;}</style></defs><title>event_cluster</title><polygon class="cls-1" points="13.692 13 16.154 37.615 23.539 37.615 26 45 28.462 37.615 35.846 37.615 38.308 13 13.692 13"/><circle class="cls-2" cx="12" cy="11" r="11"/><path class="cls-3" d="M14.182,9.662l.22-1.977a5.627,5.627,0,0,0-6.224,6.224l1.977-.22a3.64,3.64,0,0,1,4.027-4.027M8.853,8.36a6.947,6.947,0,0,1,5.7-1.992l.219-1.977a8.937,8.937,0,0,0-9.883,9.884l1.976-.219a6.953,6.953,0,0,1,1.993-5.7m6.334,3.519a1.991,1.991,0,1,0,0,2.815,1.989,1.989,0,0,0,0-2.815"/><circle class="cls-4" cx="26" cy="26.23" r="1.611"/><circle class="cls-4" cx="19.895" cy="26.23" r="1.611"/><circle class="cls-4" cx="32.105" cy="26.23" r="1.611"/></svg>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32px" height="43px" viewBox="0 0 32 43" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>heterogen_digital</title>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="heterogen_digital" fill-rule="nonzero">
+            <polygon id="Fill-1" fill="#EA3080" points="0 0 3.19932266 33.0767436 12.8006773 33.0767436 16 43 19.2004516 33.0767436 28.7995485 33.0767436 32 0"></polygon>
+            <g id="Group" transform="translate(5.818182, 14.000000)" fill="#FFFFFF">
+                <ellipse id="Oval" cx="1.93939394" cy="2" rx="1.93939394" ry="2"></ellipse>
+                <ellipse id="Oval-Copy" cx="17.4545455" cy="2" rx="1.93939394" ry="2"></ellipse>
+                <ellipse id="Oval-Copy" cx="9.69696968" cy="2" rx="1.93939394" ry="2"></ellipse>
+            </g>
+        </g>
+    </g>
+</svg>
