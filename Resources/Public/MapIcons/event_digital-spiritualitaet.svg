@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="32px" height="43px" viewBox="0 0 32 43" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<svg width="25px" height="32px" viewBox="0 0 25 32" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
     <title>event_digital-spiritualitaet</title>
     <defs>
-        <polygon id="path-1" points="0 0 5.00462676 0 5.00462676 11.0237392 0 11.0237392"></polygon>
+        <polygon id="path-1" points="0 0 3.787197 0 3.787197 8.34209504 0 8.34209504"></polygon>
     </defs>
     <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-        <g id="event_digital-spiritualitaet" transform="translate(0.000000, -0.000000)">
-            <polygon id="Fill-1" fill="#EA3080" fill-rule="nonzero" points="0 0 3.19932266 32.5280528 12.8006773 32.5280528 16 42.2866981 19.2004516 32.5280528 28.7995485 32.5280528 32 0"></polygon>
-            <g id="Group-6" transform="translate(13.346739, 5.338696)">
-                <path d="M4.65721114,4.98500705 C4.36224821,3.04305652 3.25980756,2.82150065 2.52974093,0 C-1.2340395,3.83051413 0.59446376,7.65702422 2.29884234,7.98268466 C1.47000984,7.60230259 1.68489235,5.62565053 2.38826549,4.82885021 C3.19707788,5.59895706 3.66287908,7.53957292 2.93414712,7.9653339 C4.36491756,7.68238303 4.79868658,5.92328281 4.65721114,4.98500705" id="Fill-1" fill="#FFFFFF" fill-rule="nonzero"></path>
-                <g id="Fill-3-Clipped" transform="translate(0.000000, 8.996369)">
+        <g id="event_digital-spiritualitaet">
+            <polygon id="Fill-1" fill="#EA3080" fill-rule="nonzero" points="0 0 2.42105271 24.615251 9.68677367 24.615251 12.1078264 32 14.5297334 24.615251 21.7937459 24.615251 24.2156528 0"></polygon>
+            <g id="Group-6" transform="translate(10.100000, 4.040000)">
+                <path d="M3.524294,3.77235 C3.301084,2.30280001 2.466824,2.13514001 1.914354,0 C-0.933846003,2.89870001 0.449854001,5.79437 1.739624,6.04081001 C1.112414,5.75296 1.27502401,4.25715 1.807294,3.65418001 C2.419354,4.23695001 2.771844,5.70549001 2.220384,6.02768001 C3.30310401,5.81356001 3.63135401,4.48238 3.524294,3.77235" id="Fill-1" fill="#FFFFFF" fill-rule="nonzero"></path>
+                <g id="Fill-3-Clipped" transform="translate(0.000000, 6.807905)">
                     <mask id="mask-2" fill="white">
                         <use xlink:href="#path-1"></use>
                     </mask>
                     <g id="path-1"></g>
-                    <path d="M2.50251358,0 C1.11979141,0 0,0.448450434 0,1.00100543 L0,1.00100543 L0,10.0220664 L0,10.0220664 C0,10.5759561 1.12112608,11.0244065 2.50251358,11.0244065 C3.88390108,11.0244065 5.00502717,10.5759561 5.00502717,10.0220664 L5.00502717,1.00100543 C5.00502717,0.448450434 3.88390108,0 2.50251358,0" id="Fill-3" fill="#FFFFFF" fill-rule="nonzero" mask="url(#mask-2)"></path>
+                    <path d="M1.89375,0 C0.84739,0 0,0.33936 0,0.757499999 L0,0.757499999 L0,7.58409001 L0,7.58409001 C0,8.00324004 0.848399997,8.34260001 1.89375,8.34260001 C2.9391,8.34260001 3.78750001,8.00324004 3.78750001,7.58409001 L3.78750001,0.757499999 C3.78750001,0.33936 2.9391,0 1.89375,0" id="Fill-3" fill="#FFFFFF" fill-rule="nonzero" mask="url(#mask-2)"></path>
                 </g>
             </g>
         </g>

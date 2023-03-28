@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="32px" height="43px" viewBox="0 0 32 43" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<svg width="25px" height="32px" viewBox="0 0 25 32" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
     <title>event_digital-bildung</title>
     <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-        <g id="event_digital-bildung" transform="translate(0.000000, -0.000000)" fill-rule="nonzero">
-            <polygon id="Fill-1" fill="#EA3080" points="0 0 3.19932266 32.5061484 12.8006773 32.5061484 16 42.2582223 19.2004516 32.5061484 28.7995485 32.5061484 32 0"></polygon>
-            <g id="Group-3" transform="translate(9.342717, 5.335101)" fill="#FFFFFF">
-                <path d="M0,16.2409083 L1.47976885,16.6452169 L1.92203684,15.0301981 L1.22593584,15.1553676 L1.13504367,13.8837341 L1.03306709,12.4681003 L0,16.2409083 Z M10.0790548,13.5469949 L11.9235008,18.3865129 L13.3467391,17.8437425 L11.6031613,13.2700713 L10.0790548,13.5469949 Z M3.0271526,14.8285976 L2.38536521,19.7423312 L3.89506197,19.9383931 L4.59892206,14.5417048 L3.0271526,14.8285976 Z" id="Fill-1"></path>
-                <polygon id="Fill-2" points="10.908723 0 1.4138166 1.72578828 2.27618377 13.8018754 11.7721986 12.0771948"></polygon>
+        <g id="event_digital-bildung" fill-rule="nonzero">
+            <polygon id="Fill-1" fill="#EA3080" points="0 0 2.42268414 24.615251 9.69330112 24.615251 12.1159853 32 14.5395243 24.615251 21.8084316 24.615251 24.2319706 0"></polygon>
+            <g id="Group-3" transform="translate(7.074764, 4.040000)" fill="#FFFFFF">
+                <path d="M0,12.2984129 L1.1205536,12.6045752 L1.45546063,11.3816037 L0.928338788,11.4763882 L0.859510776,10.5134449 L0.782289104,9.44145749 L0,12.2984129 Z M7.63235498,10.2584494 L9.02906002,13.92317 L10.1068059,13.5121576 L8.78648323,10.0487493 L7.63235498,10.2584494 Z M2.29230852,11.2289419 L1.80631561,14.9498622 L2.9495321,15.0983299 L3.4825295,11.0116926 L2.29230852,11.2289419 Z" id="Fill-1"></path>
+                <polygon id="Fill-2" points="8.26062047 0 1.07061132 1.30685159 1.72363807 10.4514575 8.91448657 9.14544466"></polygon>
             </g>
         </g>
     </g>
