@@ -10,7 +10,7 @@
  * "version" and "dependencies" must not be touched!
  ***************************************************************/
 
-$EM_CONF[$_EXTKEY] = [
+$EM_CONF['nkc_base'] = [
     'title' => 'Nordkirche NAPI Client Base Library',
     'description' => '',
     'category' => 'be',
