@@ -58,7 +58,7 @@ class BaseController extends ActionController
         // Limit items per api request
         if (!empty($this->settings['flexform']['paginate']['mode']) && ((int)$this->settings['flexform']['paginate']['mode'] > 0)) {
             // Pagination is active: use page limit
-            $limit = !empty($this->settings['flexform']['paginate']['itemsPerPage']) ?: $this->settings['paginate']['itemsPerPage'];
+            $limit = !empty($this->settings['flexform']['paginate']['itemsPerPage']) ? (int)$this->settings['flexform']['paginate']['itemsPerPage'] : $this->settings['paginate']['itemsPerPage'];
             $query->setPageSize($mergedResult ? floor($limit / 2) : $limit);
 
             // Set page
@@ -69,7 +69,7 @@ class BaseController extends ActionController
             }
         } else {
             // Pagination is inactive: use general limit
-            $limit = !empty($this->settings['flexform']['maxItems']) ?: $this->settings['maxItems'];
+            $limit = !empty($this->settings['flexform']['maxItems']) ? (int)$this->settings['flexform']['maxItems'] : $this->settings['maxItems'];
 
             if ($limit) {
                 $query->setPageSize($mergedResult ? floor($limit / 2) : $limit);
