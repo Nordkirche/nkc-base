@@ -131,6 +131,8 @@ class Selector extends AbstractFormElement
             $config = $config['arguments'];
         }
 
+        $config['type'] = empty($config['type']) ? '' : $config['type'];
+
         $fieldId = StringUtility::getUniqueId('tceforms-multiselect-');
         $md5OfElName = str_replace('tceforms-multiselect-', '', $fieldId);
 
