@@ -160,9 +160,9 @@ class BaseController extends ActionController
             $numRows = $itemsPerPage;
         } else {
             if ((int)$this->settings['flexform']['paginate']['mode'] > 0) {
-                $numRows = $this->settings['flexform']['paginate']['itemsPerPage'] ?: $this->settings['paginate']['itemsPerPage'];
+                $numRows = !empty($this->settings['flexform']['paginate']['itemsPerPage']) ? $this->settings['flexform']['paginate']['itemsPerPage'] : $this->settings['paginate']['itemsPerPage'];
             } else {
-                $numRows = $this->settings['flexform']['maxItems'] ?: $this->settings['maxItems'];
+                $numRows = !empty($this->settings['flexform']['maxItems']) ? $this->settings['flexform']['maxItems'] : $this->settings['maxItems'];
             }
         }
         return floor($numItems / $numRows) + 1;

@@ -70,7 +70,7 @@ class NapiWizardController extends AbstractWizardController
     /**
      * Constructor
      */
-    public function __construct(private IconFactory $iconFactory, private PageRenderer $pageRenderer)
+    public function __construct()
     {
         $this->init();
     }
@@ -358,10 +358,10 @@ require(['jquery'], function ($) {
     function resolveValidationRules(opener, field) {
 
         var result = true;
-    
+
         field = opener.$(field);
         rules = field.data('formengine-validation-rules');
-    
+
         $.each(rules, function(k, rule) {
             if ((rule.minItems > 0 ) && (rule.minItems > field.find('option').length)) {
                 result = false;
@@ -371,25 +371,25 @@ require(['jquery'], function ($) {
             }
         });
         return result;
-    };	
+    };
 
     function addListener() {
         $('a.t3js-pageLink').on('click', function(e) {
             e.preventDefault();
             opener = window.opener;
-            var element = '<option value="' + $(this).attr('href') + '">' + $(this).text() + '</option>'; 
+            var element = '<option value="' + $(this).attr('href') + '">' + $(this).text() + '</option>';
             if (opener) {
                 var valueField = opener.$('#tceforms-multiselect-value-$field');
                 var newValue = valueField.val();
-                
+
                 opener.$('#tceforms-multiselect-$field').append(element);
-                
+
                 if (newValue != '') newValue += ',';
                 newValue += $(this).attr('href');
                 valueField.val(newValue);
-                
+
                 formGroup = opener.$('#tceforms-multiselect-$field').parent('.form-wizards-element').parent('.form-wizards-wrap').parent('.formengine-field-item').parent('.formengine-field-item').parent('.form-group');
-        
+
                 if (resolveValidationRules(opener, '#tceforms-multiselect-$field') == true) {
                     formGroup.removeClass('has-error');
                 } else {
@@ -398,8 +398,8 @@ require(['jquery'], function ($) {
                 self.close();
             }
         });
-    }  
-    
+    }
+
     $(document).ready(function() {
         addListener();
     });
