@@ -3,7 +3,6 @@
 namespace Nordkirche\NkcBase\Service;
 
 use Nordkirche\NkcBase\Exception\ApiException;
-use Doctrine\Common\Cache\RedisCache;
 use Nordkirche\Ndk\Service\FactoryService;
 use Nordkirche\Ndk\Domain\Query\AbstractQuery;
 use Monolog\Handler\StreamHandler;
@@ -68,19 +67,7 @@ class ApiService
                     $monolog->pushHandler(new StreamHandler($EXT_CONF['NDK_LOG_FILE']));
                     $config->setLogger($monolog);
                 }
-
-                if (isset($EXT_CONF['NDK_REDIS_CACHE']['host'], $EXT_CONF['NDK_REDIS_CACHE']['port'])) {
-                    $redis = new \Redis();
-                    $redis->connect($EXT_CONF['NDK_REDIS_CACHE']['host'], $EXT_CONF['NDK_REDIS_CACHE']['port']);
-
-                    $cacheDriver = new RedisCache();
-                    $cacheDriver->setRedis($redis);
-
-                    $config->setReflectionCacheProvider(clone $cacheDriver);
-                    $config->setHttpCacheProvider(clone $cacheDriver);
-                    $config->setDependencyInjectionCacheProvider(clone $cacheDriver);
-                }
-
+                
                 return new Api($config);
             } catch (\Exception $e) {
                 throw new ApiException('Configuration error - please check API configuration', 1495105254);
