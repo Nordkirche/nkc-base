@@ -85,7 +85,6 @@ class NapiSyncCommandController extends Command
         $categories = ApiService::getAllItems($repository, $query);
 
         foreach ($categories as $importCategory) {
-            echo $importCategory->getId() . ' - ' . $importCategory->getName() . "\n";
 
             $category = $this->getCategory($importCategory->getId());
 
@@ -99,10 +98,8 @@ class NapiSyncCommandController extends Command
             $category['parent'] =  ($parent instanceof Category) ? $parent->getId() : 0;
 
             if ($update) {
-                echo "Updating\n";
                 $this->updateCategory($category);
             } else {
-                echo "Adding\n";
                 $this->createCategory($category);
             }
         }
