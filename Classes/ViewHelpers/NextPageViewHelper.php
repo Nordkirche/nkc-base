@@ -21,7 +21,7 @@ class NextPageViewHelper extends AbstractViewHelper
      */
     public function initializeArguments()
     {
-        $this->registerArgument('query', '\Nordkirche\Ndk\Domain\Query\AbstractQuery', 'Query object to modify');
+        $this->registerArgument('query', '\\' . AbstractQuery::class, 'Query object to modify');
     }
 
     /**

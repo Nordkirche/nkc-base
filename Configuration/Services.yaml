@@ -3,6 +3,17 @@ services:
     autowire: true
     autoconfigure: true
     public: false
-
   Nordkirche\NkcBase\:
     resource: '../Classes/*'
+  Nordkirche\NkcBase\Command\MapCacheCommandController:
+    public: true
+    tags:
+      - name: 'console.command'
+        command: 'nkc_base:map_cache'
+        schedulable: true
+  Nordkirche\NkcBase\Command\NapiSyncCommandController:
+    public: true
+    tags:
+      - name: 'console.command'
+        command: 'nkc_base:napi_sync'
+        schedulable: true

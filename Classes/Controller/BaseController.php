@@ -2,6 +2,7 @@
 
 namespace Nordkirche\NkcBase\Controller;
 
+use Nordkirche\Ndk\Service\Result;
 use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
 use Nordkirche\Ndk\Domain\Query\AbstractQuery;
 use Nordkirche\Ndk\Domain\Query\InstitutionQuery;
@@ -55,9 +56,9 @@ class BaseController extends ActionController
     protected function setPagination($query, $currentPage, $mergedResult = false)
     {
         // Limit items per api request
-        if ((int)$this->settings['flexform']['paginate']['mode'] > 0) {
+        if (!empty($this->settings['flexform']['paginate']['mode']) && ((int)$this->settings['flexform']['paginate']['mode'] > 0)) {
             // Pagination is active: use page limit
-            $limit = $this->settings['flexform']['paginate']['itemsPerPage'] ?: $this->settings['paginate']['itemsPerPage'];
+            $limit = !empty($this->settings['flexform']['paginate']['itemsPerPage']) ? (int)$this->settings['flexform']['paginate']['itemsPerPage'] : $this->settings['paginate']['itemsPerPage'];
             $query->setPageSize($mergedResult ? floor($limit / 2) : $limit);
 
             // Set page
@@ -68,7 +69,7 @@ class BaseController extends ActionController
             }
         } else {
             // Pagination is inactive: use general limit
-            $limit = intval($this->settings['flexform']['maxItems'] ?: $this->settings['maxItems']);
+            $limit = !empty($this->settings['flexform']['maxItems']) ? (int)$this->settings['flexform']['maxItems'] : $this->settings['maxItems'];
 
             if ($limit) {
                 $query->setPageSize($mergedResult ? floor($limit / 2) : $limit);
@@ -159,9 +160,9 @@ class BaseController extends ActionController
             $numRows = $itemsPerPage;
         } else {
             if ((int)$this->settings['flexform']['paginate']['mode'] > 0) {
-                $numRows = $this->settings['flexform']['paginate']['itemsPerPage'] ?: $this->settings['paginate']['itemsPerPage'];
+                $numRows = !empty($this->settings['flexform']['paginate']['itemsPerPage']) ? $this->settings['flexform']['paginate']['itemsPerPage'] : $this->settings['paginate']['itemsPerPage'];
             } else {
-                $numRows = $this->settings['flexform']['maxItems'] ?: $this->settings['maxItems'];
+                $numRows = !empty($this->settings['flexform']['maxItems']) ? $this->settings['flexform']['maxItems'] : $this->settings['maxItems'];
             }
         }
         return floor($numItems / $numRows) + 1;
@@ -299,6 +300,11 @@ class BaseController extends ActionController
         $this->settings = $settings;
     }
 
+    /**
+     * @return array
+     * @throws \TYPO3\CMS\Extbase\Configuration\Exception\InvalidConfigurationTypeException
+     * @throws \TYPO3\CMS\Extbase\Object\Exception
+     */
     public function getTypoScriptConfiguration()
     {
         $objectManager = GeneralUtility::makeInstance(ObjectManager::class);
@@ -306,4 +312,68 @@ class BaseController extends ActionController
         $typoScriptService = $objectManager->get(TypoScriptService::class);
         return $typoScriptService->convertTypoScriptArrayToPlainArray($configurationManager->getConfiguration(ConfigurationManagerInterface::CONFIGURATION_TYPE_FULL_TYPOSCRIPT));
     }
+
+
+    /**
+     * @param Result $result
+     * @return array|bool
+     */
+    public function getPagination($result, $currentPage)
+    {
+        $pageList = [];
+
+        $pages = $this->getNumberOfPages($result->getRecordCount());
+
+        if ($pages > 1) {
+
+            if ($pages > 10) {
+                $lower = $currentPage - 3;
+                $upper = $currentPage + 3;
+
+                if ($lower < 0) {
+                    $upper = $upper - $lower;
+                    $lower = 1;
+                }
+
+            } else {
+                $lower = 1;
+                $upper = 99;
+            }
+
+            for($i=1; $i < $pages; $i++) {
+                if ((($i >= $lower) && ($i <= $upper)) || (($upper < $pages) && ($i >= $pages - 2)) || (($lower > 2) && ($i <= 2))) {
+                    if (($upper < $pages - 3) && ($i == $pages - 2)) {
+                        $pageList['pages'][] = [
+                            'index' => '...',
+                            'gap' => 1
+                        ];
+                    }
+                    $pageList['pages'][] = [
+                        'index' => $i,
+                        'current' => ($i == $currentPage) ? 1 : 0
+                    ];
+                    if (($lower > 3) && ($i == 2)) {
+                        $pageList['pages'][] = [
+                            'index' => '...',
+                            'gap' => 1
+                        ];
+                    }
+                }
+            }
+
+            if ($currentPage > 1) {
+                $pageList['prev'] = [
+                    'index' => $currentPage - 1
+                ];
+            }
+
+            if ($currentPage < $pages) {
+                $pageList['next'] = [
+                    'index' => $currentPage + 1
+                ];
+            }
+            return $pageList;
+        }
+    }
+
 }

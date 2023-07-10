@@ -10,17 +10,17 @@
  * "version" and "dependencies" must not be touched!
  ***************************************************************/
 
-$EM_CONF[$_EXTKEY] = [
+$EM_CONF['nkc_base'] = [
     'title' => 'Nordkirche NAPI Client Base Library',
     'description' => '',
     'category' => 'be',
     'author' => 'netzleuchten GmbH',
     'author_email' => 'hallo@netzleuchten.com',
     'state' => 'stable',
-    'version' => '10.4.0',
+    'version' => '11.5.0',
     'constraints' => [
         'depends' => [
-            'typo3' => '10.4.0-10.4.99'
+            'typo3' => '11.5.0-11.5.99'
         ],
         'conflicts' => [],
         'suggests' => [],

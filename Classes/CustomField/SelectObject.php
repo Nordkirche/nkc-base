@@ -18,7 +18,7 @@ class SelectObject
     {
         $repository = ApiService::getRepository($config['config']['allowed']);
         $query = new PageQuery();
-        if ($config['config']['sort']) {
+        if (isset($config['config']['sort'])) {
             $query->setSort($config['config']['sort']);
         }
         $items = ApiService::getAllItems($repository, $query);
