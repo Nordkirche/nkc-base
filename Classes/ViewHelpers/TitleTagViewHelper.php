@@ -1,14 +1,8 @@
 <?php
-
 namespace Nordkirche\NkcBase\ViewHelpers;
 
-/**
- * This file is taken from the "news" Extension for TYPO3 CMS.
- *
- * Author:   Georg Ringer
- * License:  GNU GENERAL PUBLIC LICENSE - Version 2, June 1991
- */
-
+use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 use TYPO3Fluid\Fluid\Core\Rendering\RenderingContextInterface;
 use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
 use TYPO3Fluid\Fluid\Core\ViewHelper\Traits\CompileWithRenderStatic;
@@ -41,8 +35,8 @@ class TitleTagViewHelper extends AbstractViewHelper
     ) {
         $content = trim($renderChildrenClosure());
         if (!empty($content)) {
-            $GLOBALS['TSFE']->altPageTitle = $content;
-            $GLOBALS['TSFE']->indexedDocTitle = $content;
+            GeneralUtility::makeInstance(\Nordkirche\NkcBase\Provider\TitleProvider::class)->setTitle($content);
         }
+
     }
 }

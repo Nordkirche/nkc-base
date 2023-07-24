@@ -20,6 +20,13 @@ plugin.tx_nkcbase {
     }
 }
 
+config.pageTitleProviders {
+    nkcBase {
+        provider = Nordkirche\NkcBase\Provider\TitleProvider
+        before = altPageTitle,record,seo,news
+    }
+}
+
 lib.contentElement {
     layoutRootPaths.10 = EXT:nkc_base/Resources/Private/Extensions/fluid_styled_content/Layouts/
 }
