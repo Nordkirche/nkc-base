@@ -3,11 +3,13 @@
 namespace Nordkirche\NkcBase\ViewHelpers;
 
 /**
- * This file is part of the "news" Extension for TYPO3 CMS.
+ * This file is taken from the "news" Extension for TYPO3 CMS.
  *
  * For the full copyright and license information, please read the
  * LICENSE.txt file that was distributed with this source code.
  */
+
+use TYPO3Fluid\Fluid\Core\Rendering\RenderingContextInterface;
 use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractTagBasedViewHelper;
 use TYPO3\CMS\Core\Page\PageRenderer;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
@@ -57,32 +59,45 @@ class MetaTagViewHelper extends AbstractTagBasedViewHelper
     /**
      * Renders a meta tag
      */
-    public function render()
+    public static function renderStatic(array $arguments, \Closure $renderChildrenClosure, RenderingContextInterface $renderingContext)
     {
-        $useCurrentDomain = $this->arguments['useCurrentDomain'];
-        $forceAbsoluteUrl = $this->arguments['forceAbsoluteUrl'];
+        // Skip if current record is part of tt_content CType shortcut
+        if (!empty($GLOBALS['TSFE']->recordRegister)
+            && is_array($GLOBALS['TSFE']->recordRegister)
+            && strpos(array_keys($GLOBALS['TSFE']->recordRegister)[0], 'tt_content:') !== false
+            && !empty($GLOBALS['TSFE']->currentRecord)
+            && strpos($GLOBALS['TSFE']->currentRecord, 'tx_news_domain_model_news:') !== false
+        ) {
+            return;
+        }
+
+        $useCurrentDomain = $arguments['useCurrentDomain'];
+        $forceAbsoluteUrl = $arguments['forceAbsoluteUrl'];
+        $content = (string)$arguments['content'];
 
         // set current domain
         if ($useCurrentDomain) {
-            $this->tag->addAttribute('content', GeneralUtility::getIndpEnv('TYPO3_REQUEST_URL'));
+            $content = GeneralUtility::getIndpEnv('TYPO3_REQUEST_URL');
         }
 
         // prepend current domain
         if ($forceAbsoluteUrl) {
-            $path = $this->arguments['content'];
-            if (!\str_starts_with($path, GeneralUtility::getIndpEnv('TYPO3_SITE_URL'))) {
-                $this->tag->addAttribute(
-                    'content',
+            $parsedPath = parse_url($content);
+            if (is_array($parsedPath) && !isset($parsedPath['host'])) {
+                $content =
                     rtrim(GeneralUtility::getIndpEnv('TYPO3_SITE_URL'), '/')
                     . '/'
-                    . ltrim($this->arguments['content'], '/')
-                );
+                    . ltrim($content, '/');
             }
         }
 
-        if ($useCurrentDomain || (isset($this->arguments['content']) && !empty($this->arguments['content']))) {
+        if ($content !== '') {
             $pageRenderer = GeneralUtility::makeInstance(PageRenderer::class);
-            $pageRenderer->addMetaTag($this->tag->render());
+            if ($arguments['property']) {
+                $pageRenderer->setMetaTag('property', $arguments['property'], $content);
+            } elseif ($arguments['name']) {
+                $pageRenderer->setMetaTag('name', $arguments['name'], $content);
+            }
         }
     }
 }
