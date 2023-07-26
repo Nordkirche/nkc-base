@@ -52,7 +52,7 @@ class MakeClickableViewHelper extends AbstractViewHelper
             foreach ($matches as $match) {
                 if (strlen($match) > 0) {
                     $urlParts = parse_url($match);
-                    $scheme = (!$urlParts['scheme']) ? 'http://' : '';
+                    $scheme = (empty($urlParts['scheme'])) ? 'http://' : '';
                     $value = str_replace($match, sprintf('<a href="%s%s" target="_blank" rel="nofollow">%s</a>', $scheme, $match, $match), $value);
                     return $value;
                 }
