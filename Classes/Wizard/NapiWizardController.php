@@ -85,7 +85,7 @@ class NapiWizardController extends AbstractWizardController
         // Setting GET vars (used in frameset script):
         $this->P = GeneralUtility::_GP('P');
         $this->allowed = $this->P['allowed'];
-        $this->search = GeneralUtility::_GP('search');
+        $this->search = GeneralUtility::_GP('search') ? GeneralUtility::_GP('search') : '';
         $this->field = $this->P['field'];
 
         $hmac_validate = GeneralUtility::hmac('wizard_napi', $this->allowed);
@@ -120,14 +120,13 @@ class NapiWizardController extends AbstractWizardController
     private function main()
     {
         $buttonBar = $this->moduleTemplate->getDocHeaderComponent()->getButtonBar();
-
-        $this->pageRenderer->loadRequireJsModule('jquery');
-
+        $iconFactory = GeneralUtility::makeInstance(IconFactory::class);
+        
         $closeButton = $buttonBar->makeLinkButton()
             ->setHref('#')
             ->setTitle('Schließen')
             ->setOnClick('window.close();return true;')
-            ->setIcon($this->iconFactory->getIcon('actions-close', Icon::SIZE_SMALL))
+            ->setIcon($iconFactory->getIcon('actions-close', Icon::SIZE_SMALL))
             ->setShowLabelText(true);
         $buttonBar->addButton($closeButton);
 
