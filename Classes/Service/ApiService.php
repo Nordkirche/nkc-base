@@ -53,7 +53,10 @@ class ApiService
                     $EXT_CONF['NDK_NAPI_PATH'],
                     $EXT_CONF['NDK_NAPI_PROTOCOL'],
                     $EXT_CONF['NDK_NAPI_VERSION'],
-                    [$EXT_CONF['NDK_HTTP_AUTH_USERNAME'], $EXT_CONF['NDK_HTTP_AUTH_PASSWORD']]
+                    [
+                        empty($EXT_CONF['NDK_HTTP_AUTH_USERNAME']) ? '' : $EXT_CONF['NDK_HTTP_AUTH_USERNAME'],
+                        empty($EXT_CONF['NDK_HTTP_AUTH_PASSWORD']) ? '' : $EXT_CONF['NDK_HTTP_AUTH_PASSWORD']
+                    ]
                 );
 
                 if (isset($EXT_CONF['NDK_NAPI_TIMEOUT'])) {
@@ -67,7 +70,7 @@ class ApiService
                     $monolog->pushHandler(new StreamHandler($EXT_CONF['NDK_LOG_FILE']));
                     $config->setLogger($monolog);
                 }
-                
+
                 return new Api($config);
             } catch (\Exception $e) {
                 throw new ApiException('Configuration error - please check API configuration', 1495105254);
