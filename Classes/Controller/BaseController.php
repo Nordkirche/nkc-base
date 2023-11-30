@@ -103,7 +103,7 @@ class BaseController extends ActionController
         $startRow = 0;
 
         // Limit items per api request
-        if ((int)$this->settings['flexform']['paginate']['mode'] > 0) {
+        if (!empty($this->settings['flexform']['paginate']['mode']) && ((int)$this->settings['flexform']['paginate']['mode'] > 0)) {
             // Pagination is active: use page limit
             $numRows = $this->settings['flexform']['paginate']['itemsPerPage'] ?: $this->settings['paginate']['itemsPerPage'];
             $startRow = ($this->getCurrentPage($currentPage) ? ($this->getCurrentPage($currentPage) - 1) : 0) * $numRows;
@@ -123,7 +123,7 @@ class BaseController extends ActionController
      */
     protected function getItemsPerPage($mergedResult = false)
     {
-        if ((int)$this->settings['flexform']['paginate']['mode'] > 0) {
+        if (!empty($this->settings['flexform']['paginate']['mode']) && ((int)$this->settings['flexform']['paginate']['mode'] > 0)) {
             // Pagination is active: use page limit
             $numRows = $this->settings['flexform']['paginate']['itemsPerPage'] ?: $this->settings['paginate']['itemsPerPage'];
         } else {
@@ -159,7 +159,7 @@ class BaseController extends ActionController
         if ($itemsPerPage) {
             $numRows = $itemsPerPage;
         } else {
-            if ((int)$this->settings['flexform']['paginate']['mode'] > 0) {
+            if (!empty($this->settings['flexform']['paginate']['mode']) && ((int)$this->settings['flexform']['paginate']['mode'] > 0)) {
                 $numRows = !empty($this->settings['flexform']['paginate']['itemsPerPage']) ? $this->settings['flexform']['paginate']['itemsPerPage'] : $this->settings['paginate']['itemsPerPage'];
             } else {
                 $numRows = !empty($this->settings['flexform']['maxItems']) ? $this->settings['flexform']['maxItems'] : $this->settings['maxItems'];
