@@ -18,6 +18,7 @@ use TYPO3\CMS\Core\Utility\ArrayUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
+use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 
 class BaseController extends ActionController
 {
@@ -340,7 +341,7 @@ class BaseController extends ActionController
                 $upper = 99;
             }
 
-            for($i=1; $i < $pages; $i++) {
+            for($i=1; $i <= $pages; $i++) {
                 if ((($i >= $lower) && ($i <= $upper)) || (($upper < $pages) && ($i >= $pages - 2)) || (($lower > 2) && ($i <= 2))) {
                     if (($upper < $pages - 3) && ($i == $pages - 2)) {
                         $pageList['pages'][] = [
@@ -372,6 +373,7 @@ class BaseController extends ActionController
                     'index' => $currentPage + 1
                 ];
             }
+
             return $pageList;
         }
     }
