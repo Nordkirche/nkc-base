@@ -15,6 +15,6 @@ return [
     // Register napi wizard
     'wizard_napi' => [
         'path' => '/wizard',
-        'target' => NapiWizardController::class . '::mainAction'
-    ]
+        'target' => NapiWizardController::class,
+    ],
 ];

@@ -14,13 +14,9 @@ namespace Nordkirche\NkcBase\ViewHelpers\Link;
  *
  * The TYPO3 project - inspiring people to share!
  */
-use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\Page\PageRenderer;
-use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Frontend\Authentication\FrontendUserAuthentication;
-use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 use TYPO3\CMS\Frontend\Controller\TypoScriptFrontendController;
 use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractTagBasedViewHelper;
 
@@ -133,7 +129,8 @@ class PageViewHelper extends AbstractTagBasedViewHelper
      * @param int $pageUid
      * @return bool
      */
-    private function initTSFE($pageUid = 1) {
+    private function initTSFE($pageUid = 1)
+    {
         if (isset($GLOBALS['TSFE']) || !$pageUid) {
             return false;
         }
@@ -183,5 +180,4 @@ class PageViewHelper extends AbstractTagBasedViewHelper
 
         return true;
     }
-
 }

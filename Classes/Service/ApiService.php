@@ -2,26 +2,24 @@
 
 namespace Nordkirche\NkcBase\Service;
 
-use Nordkirche\NkcBase\Exception\ApiException;
-use Nordkirche\Ndk\Service\FactoryService;
-use Nordkirche\Ndk\Domain\Query\AbstractQuery;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 use Nordkirche\Ndk\Api;
 use Nordkirche\Ndk\Configuration;
+use Nordkirche\Ndk\Domain\Query\AbstractQuery;
 use Nordkirche\Ndk\Domain\Query\PageQuery;
 use Nordkirche\Ndk\Domain\Repository\AbstractRepository;
+use Nordkirche\Ndk\Service\FactoryService;
 use Nordkirche\Ndk\Service\Result;
+use Nordkirche\NkcBase\Exception\ApiException;
 use TYPO3\CMS\Core\Core\Environment;
-use TYPO3\CMS\Core\Utility\VersionNumberUtility;
 
 class ApiService
 {
-
     /**
      * @var Api
      */
-    protected static $NdkApi = null;
+    protected static $NdkApi;
 
     /**
      * @return Api
@@ -55,7 +53,7 @@ class ApiService
                     $EXT_CONF['NDK_NAPI_VERSION'],
                     [
                         empty($EXT_CONF['NDK_HTTP_AUTH_USERNAME']) ? '' : $EXT_CONF['NDK_HTTP_AUTH_USERNAME'],
-                        empty($EXT_CONF['NDK_HTTP_AUTH_PASSWORD']) ? '' : $EXT_CONF['NDK_HTTP_AUTH_PASSWORD']
+                        empty($EXT_CONF['NDK_HTTP_AUTH_PASSWORD']) ? '' : $EXT_CONF['NDK_HTTP_AUTH_PASSWORD'],
                     ]
                 );
 

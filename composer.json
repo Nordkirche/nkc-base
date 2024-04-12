@@ -10,8 +10,14 @@
         }
     ],
     "require": {
-        "typo3/cms-core": "^11.5",
+        "typo3/cms-core": "^12.4",
         "nordkirche/ndk": "^2.0"
+    },
+    "config": {
+        "bin-dir": ".build/bin",
+        "discard-changes": true,
+        "optimize-autoloader": true,
+        "vendor-dir": ".build/vendor"
     },
     "autoload": {
         "psr-4": {
@@ -20,7 +26,12 @@
     },
     "extra": {
         "typo3/cms": {
-            "extension-key": "nkc_base"
+            "extension-key": "nkc_base",
+            "app-dir": ".build",
+            "web-dir": ".build/public"
         }
+    },
+    "require-dev": {
+        "typo3/coding-standards": "^0.7.1"
     }
 }

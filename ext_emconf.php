@@ -20,7 +20,7 @@ $EM_CONF['nkc_base'] = [
     'version' => '11.5.0',
     'constraints' => [
         'depends' => [
-            'typo3' => '11.5.0-11.5.99'
+            'typo3' => '11.5.0-11.5.99',
         ],
         'conflicts' => [],
         'suggests' => [],

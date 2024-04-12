@@ -2,10 +2,10 @@
 
 namespace  Nordkirche\NkcBase\ViewHelpers;
 
-use TYPO3Fluid\Fluid\Core\ViewHelper\Exception;
 use Nordkirche\Ndk\Service\Result;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
+use TYPO3Fluid\Fluid\Core\ViewHelper\Exception;
 
 /**
  * OrderByPropertyViewHelper
@@ -20,7 +20,6 @@ use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
  */
 class OrderByPropertyViewHelper extends AbstractViewHelper
 {
-
     /**
      * Initialize arguments.
      *

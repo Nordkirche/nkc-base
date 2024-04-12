@@ -1,4 +1,4 @@
-define(['jquery', 'TYPO3/CMS/NkcBase/backend'], function ($) {
+define(['jquery', 'TYPO3/CMS/Backend/Modal', 'TYPO3/CMS/NkcBase/backend'], function ($, Modal) {
 
     var NkcBaseBackendApp = function () {
         this.suggestStringBuffer = '';
@@ -103,6 +103,17 @@ define(['jquery', 'TYPO3/CMS/NkcBase/backend'], function ($) {
             }
 
         });
+
+      $('body').on('click', '.napi-wizard', function(e) {
+        e.preventDefault();
+        var configuration = {
+          type: Modal.types.iframe,
+          content: $(this).data('url'),
+          size: Modal.sizes.large
+        };
+        Modal.advanced(configuration);
+
+      });
     };
 
 

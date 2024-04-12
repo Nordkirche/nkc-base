@@ -2,27 +2,26 @@
 
 namespace Nordkirche\NkcBase\Controller;
 
-use Nordkirche\Ndk\Service\Result;
-use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
-use Nordkirche\Ndk\Domain\Query\AbstractQuery;
-use Nordkirche\Ndk\Domain\Query\InstitutionQuery;
-use Nordkirche\Ndk\Domain\Query\PersonQuery;
-use TYPO3\CMS\Extbase\Configuration\ConfigurationManager;
 use Nordkirche\Ndk\Api;
 use Nordkirche\Ndk\Domain\Model\Geocode;
+use Nordkirche\Ndk\Domain\Query\AbstractQuery;
+use Nordkirche\Ndk\Domain\Query\InstitutionQuery;
 use Nordkirche\Ndk\Domain\Query\PageQuery;
+use Nordkirche\Ndk\Domain\Query\PersonQuery;
 use Nordkirche\Ndk\Service\NapiService;
+use Nordkirche\Ndk\Service\Result;
 use Nordkirche\NkcBase\Service\ApiService;
 use TYPO3\CMS\Core\TypoScript\TypoScriptService;
 use TYPO3\CMS\Core\Utility\ArrayUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Extbase\Configuration\ConfigurationManager;
 use TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface;
+use TYPO3\CMS\Extbase\Configuration\Exception\InvalidConfigurationTypeException;
+use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
-use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 
 class BaseController extends ActionController
 {
-
     /**
      * @var Api
      */
@@ -33,7 +32,7 @@ class BaseController extends ActionController
      */
     protected $napiService;
 
-    public function initializeAction()
+    protected function initializeAction()
     {
         $this->api = ApiService::get();
         $this->napiService = $this->api->factory(NapiService::class);
@@ -303,10 +302,10 @@ class BaseController extends ActionController
 
     /**
      * @return array
-     * @throws \TYPO3\CMS\Extbase\Configuration\Exception\InvalidConfigurationTypeException
+     * @throws InvalidConfigurationTypeException
      * @throws \TYPO3\CMS\Extbase\Object\Exception
      */
-    public function getTypoScriptConfiguration()
+    protected function getTypoScriptConfiguration()
     {
         $objectManager = GeneralUtility::makeInstance(ObjectManager::class);
         $configurationManager = $objectManager->get(ConfigurationManager::class);
@@ -314,19 +313,17 @@ class BaseController extends ActionController
         return $typoScriptService->convertTypoScriptArrayToPlainArray($configurationManager->getConfiguration(ConfigurationManagerInterface::CONFIGURATION_TYPE_FULL_TYPOSCRIPT));
     }
 
-
     /**
      * @param Result $result
      * @return array|bool
      */
-    public function getPagination($result, $currentPage)
+    protected function getPagination($result, $currentPage)
     {
         $pageList = [];
 
         $pages = $this->getNumberOfPages($result->getRecordCount());
 
         if ($pages > 1) {
-
             if ($pages > 10) {
                 $lower = $currentPage - 3;
                 $upper = $currentPage + 3;
@@ -335,28 +332,27 @@ class BaseController extends ActionController
                     $upper = $upper - $lower;
                     $lower = 1;
                 }
-
             } else {
                 $lower = 1;
                 $upper = 99;
             }
 
-            for($i=1; $i <= $pages; $i++) {
+            for ($i = 1; $i <= $pages; $i++) {
                 if ((($i >= $lower) && ($i <= $upper)) || (($upper < $pages) && ($i >= $pages - 2)) || (($lower > 2) && ($i <= 2))) {
                     if (($upper < $pages - 3) && ($i == $pages - 2)) {
                         $pageList['pages'][] = [
                             'index' => '...',
-                            'gap' => 1
+                            'gap' => 1,
                         ];
                     }
                     $pageList['pages'][] = [
                         'index' => $i,
-                        'current' => ($i == $currentPage) ? 1 : 0
+                        'current' => ($i == $currentPage) ? 1 : 0,
                     ];
                     if (($lower > 3) && ($i == 2)) {
                         $pageList['pages'][] = [
                             'index' => '...',
-                            'gap' => 1
+                            'gap' => 1,
                         ];
                     }
                 }
@@ -364,13 +360,13 @@ class BaseController extends ActionController
 
             if ($currentPage > 1) {
                 $pageList['prev'] = [
-                    'index' => $currentPage - 1
+                    'index' => $currentPage - 1,
                 ];
             }
 
             if ($currentPage < $pages) {
                 $pageList['next'] = [
-                    'index' => $currentPage + 1
+                    'index' => $currentPage + 1,
                 ];
             }
 
@@ -378,4 +374,23 @@ class BaseController extends ActionController
         }
     }
 
+    /**
+     * @param array $config
+     * @param string $type
+     * @param string $extensionKey
+     * @return array
+     */
+    protected function getPath(array $config, string $type, string $extensionKey): array
+    {
+        $paths = [];
+        if (!empty($config['view'][$type . 'RootPaths']) && is_array($config['view'][$type . 'RootPaths'])) {
+            foreach ($config['view'][$type . 'RootPaths'] as $path) {
+                $paths[] = GeneralUtility::getFileAbsFileName($path);
+            }
+        }
+        if (count($paths) == 0) {
+            $paths[] = GeneralUtility::getFileAbsFileName(sprintf('EXT:%s/Resources/Private/%ss/', $extensionKey, ucfirst($type)));
+        }
+        return $paths;
+    }
 }

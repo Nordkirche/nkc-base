@@ -2,8 +2,8 @@
 
 namespace Nordkirche\NkcBase\ViewHelpers;
 
-use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
 use Nordkirche\Ndk\Domain\Query\AbstractQuery;
+use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
 
 /**
  * NextPageViewHelper

@@ -2,13 +2,12 @@
 
 namespace Nordkirche\NkcBase\CustomField;
 
-use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\Ndk\Domain\Query\PageQuery;
+use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\NkcBase\Service\ApiService;
 
 class SelectObject
 {
-
     /**
      * @param array $config
      * @return array
@@ -25,7 +24,7 @@ class SelectObject
         foreach ($items as $object) {
             $config['items'][] = [
                 '0' => $object->getLabel(),
-                '1' => (string)$object
+                '1' => (string)$object,
             ];
         }
 

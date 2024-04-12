@@ -2,17 +2,17 @@
 
 namespace Nordkirche\NkcBase\ViewHelpers;
 
+use Nordkirche\Ndk\Domain\Model\File\Image;
 use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\NkcBase\Service\ApiService;
-use TYPO3\CMS\Core\Core\Environment;
-use Nordkirche\Ndk\Domain\Model\File\Image;
 use TYPO3\CMS\Core\Core\ApplicationContext;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Core\Environment;
+use TYPO3\CMS\Core\Utility\PathUtility;
 use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractTagBasedViewHelper;
 
 class ImageViewHelper extends AbstractTagBasedViewHelper
 {
-    const FALLBACK_BASE_PATH = '/typo3conf/ext/nkc_base/Resources/Public/Images/';
+    public const FALLBACK_BASE_PATH = 'EXT:nkc_base/Resources/Public/Images/';
 
     /**
      * @var string
@@ -85,13 +85,13 @@ class ImageViewHelper extends AbstractTagBasedViewHelper
     {
         if ($context->isDevelopment()) {
             return [
-                'INVALID_ARGUMENTS' => self::FALLBACK_BASE_PATH . 'invalid_arguments.jpg',
-                'MISSING_IMAGE' => self::FALLBACK_BASE_PATH . 'missing_image.jpg'
+                'INVALID_ARGUMENTS' => PathUtility::getPublicResourceWebPath(self::FALLBACK_BASE_PATH . 'invalid_arguments.jpg'),
+                'MISSING_IMAGE' => PathUtility::getPublicResourceWebPath(self::FALLBACK_BASE_PATH . 'missing_image.jpg'),
             ];
         }
         return [
                 'INVALID_ARGUMENTS' => '',
-                'MISSING_IMAGE' => ''
+                'MISSING_IMAGE' => '',
             ];
     }
 }

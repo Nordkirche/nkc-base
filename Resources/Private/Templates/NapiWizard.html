@@ -1,0 +1,85 @@
+<f:be.pageRenderer pageTitle="title"
+                   includeCssFiles="{0: '{f:uri.resource(path:\'EXT:nkc_base/Resources/Public/Css/napi-wizard.css\')}'}"
+                   includeRequireJsModules="{0: '{f:uri.resource(path:\'EXT:nkc_base/Resources/Public/JavaScript/napi-wizard.js\')}'}"
+/>
+
+<f:render section="header" arguments="{_all}" />
+
+<form method="post" data-field="{fieldId}">
+    <div class="form-group">
+        <input type="text" name="search" id="search" class="form-control" placeholder="{f:translate(key: 'LLL:EXT:nkc_base/Resources/Private/Language/locallang.xlf:search.placeholder')}" value="{search}"/><input type="submit" id="doSearch" class="btn btn-default" value="{f:translate(key: 'LLL:EXT:nkc_base/Resources/Private/Language/locallang.xlf:search.button')}" />
+    </div>
+</form>
+
+<f:if condition="{search}">
+    <f:then>
+        <f:render section="result" arguments="{_all}" />
+    </f:then>
+    <f:else>
+        <f:translate key="LLL:EXT:nkc_base/Resources/Private/Language/locallang.xlf:search.hint"/>
+    </f:else>
+</f:if>
+
+<f:section name="result">
+    <f:for each="{searchResult}" as="result" key="object">
+        <f:if condition="{result -> f:count()}">
+            <h3><f:translate key="LLL:EXT:nkc_base/Resources/Private/Language/locallang.xlf:napi_objects.{object}" /></h3>
+            <p>
+                <f:for each="{result}" as="item">
+                    <f:switch expression="{object}">
+                        <f:case value="institution">
+                            <f:render section="item.institution" arguments="{item: item}" />
+                        </f:case>
+                        <f:case value="event">
+                            <f:render section="item.event" arguments="{item: item}" />
+                        </f:case>
+                        <f:case value="event">
+                            <f:render section="item.eventLocation" arguments="{item: item}" />
+                        </f:case>
+                        <f:defaultCase>
+                            <f:render section="item.default" arguments="{item: item}" />
+                        </f:defaultCase>
+                    </f:switch>
+                    <br /><br />
+                </f:for>
+            </p>
+        </f:if>
+    </f:for>
+</f:section>
+
+<f:section name="item.institution">
+    <strong><a href="{item}" class="t3js-pageLink">{item.name}</a></strong>
+    <f:if condition="{item.address}">
+        <br />{item.address.street}, {item.addresszipCode} {item.address.city}
+    </f:if>
+</f:section>
+
+<f:section name="item.event">
+    <strong><a href="{item}" class="t3js-pageLink">{item.label}</a></strong>
+    <f:if condition="{item.address}">
+        <br /><span style="color: #aaa">{item.address.street}, {item.addresszipCode} {item.address.city}</span>
+    </f:if>
+</f:section>
+
+<f:section name="item.eventLocation">
+    <strong><a href="{item}" class="t3js-pageLink">{item.name}</a></strong>
+    <f:if condition="{item.address}">
+        <br />{item.address.street}, {item.addresszipCode} {item.address.city}
+    </f:if>
+</f:section>
+
+<f:section name="item.default">
+    <strong><a href="{item}" class="t3js-pageLink">{item.label}</a></strong>
+</f:section>
+
+<f:section name="header">
+    <h1>
+        <f:translate key="LLL:EXT:nkc_base/Resources/Private/Language/locallang.xlf:header.find" />
+        <f:if condition="{search}">
+            &quot;{search}&quot;
+        </f:if>
+        <f:translate key="LLL:EXT:nkc_base/Resources/Private/Language/locallang.xlf:header.find_in" />
+        <f:for each="{allowedObjects}" as="object" iteration="iterator"><f:if condition="{iterator.index} > 0">,</f:if>
+            <f:translate key="LLL:EXT:nkc_base/Resources/Private/Language/locallang.xlf:napi_objects.{object}" /></f:for>
+        </h1>
+</f:section>

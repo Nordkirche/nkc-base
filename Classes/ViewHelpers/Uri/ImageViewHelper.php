@@ -8,7 +8,6 @@ use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractTagBasedViewHelper;
 // @todo: create a trait which implements the fallback images, so uri. and regular image viewhelepr can share
 class ImageViewHelper extends AbstractTagBasedViewHelper
 {
-
     /**
      * Initialize arguments.
      */

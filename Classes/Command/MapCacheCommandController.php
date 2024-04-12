@@ -12,7 +12,6 @@ namespace Nordkirche\NkcBase\Command;
  *  (c) 2017 Holger McCloy <mccloy@netzleuchten.com>, netzleuchten GmbH
  *
  ***/
-use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
 use Nordkirche\NkcAddress\Controller\MapController;
 use Nordkirche\NkcEvent\Controller\EventController;
 use Symfony\Component\Console\Command\Command;
@@ -23,6 +22,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Object\ObjectManager;
+use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
 
 class MapCacheCommandController extends Command
 {
@@ -55,14 +55,14 @@ class MapCacheCommandController extends Command
             'forceRefresh',
             InputArgument::OPTIONAL,
             'Soll eine Auffrischung des Caches erzwungen werden?',
-            FALSE
+            false
         );
 
         $this->addArgument(
             'frontendMode',
             InputArgument::OPTIONAL,
             'Soll der Cache durch Frontend Aufrufe aufgebaut werden (empfohlen)',
-            TRUE
+            true
         );
 
         $this->addArgument(
@@ -87,7 +87,6 @@ class MapCacheCommandController extends Command
         );
     }
 
-
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
@@ -95,8 +94,8 @@ class MapCacheCommandController extends Command
      * @throws \Exception
      * @throws \TYPO3\CMS\Extbase\Object\Exception
      */
-    protected function execute(InputInterface $input, OutputInterface $output) {
-
+    protected function execute(InputInterface $input, OutputInterface $output)
+    {
         $contentUids = $input->getArgument('contentUids');
         $baseUrl  = $input->getArgument('baseUrl');
         $forceRefresh = $input->getArgument('forceRefresh');
@@ -129,7 +128,6 @@ class MapCacheCommandController extends Command
         $io->success('Cache warm-up completed.');
 
         return 0;
-
     }
 
     /**

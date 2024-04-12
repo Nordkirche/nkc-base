@@ -12,11 +12,11 @@ namespace Nordkirche\NkcBase\Command;
  *  (c) 2017 Holger McCloy <hallo@netzleuchten.com>, netzleuchten GmbH
  *
  ***/
-use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\Ndk\Api;
 use Nordkirche\Ndk\Domain\Model\Category;
 use Nordkirche\Ndk\Domain\Query\PageQuery;
 use Nordkirche\Ndk\Domain\Repository\CategoryRepository;
+use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\NkcBase\Service\ApiService;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -30,7 +30,6 @@ use TYPO3\CMS\Extbase\Object\ObjectManager;
 
 class NapiSyncCommandController extends Command
 {
-
     /**
      * @var \TYPO3\CMS\Extbase\Domain\Repository\CategoryRepository
      */
@@ -45,7 +44,6 @@ class NapiSyncCommandController extends Command
      * @var ObjectManager
      */
     protected $objectManager;
-
 
     /**
      * Configure the command by defining the name, options and arguments
@@ -85,7 +83,6 @@ class NapiSyncCommandController extends Command
         $categories = ApiService::getAllItems($repository, $query);
 
         foreach ($categories as $importCategory) {
-
             $category = $this->getCategory($importCategory->getId());
 
             $update = (bool)count($category);
@@ -145,10 +142,9 @@ class NapiSyncCommandController extends Command
                 'uid' 			=> $category->getUid(),
                 'pid'			=> $category->getPid(),
                 'title' 		=> $category->getTitle(),
-                'parent' 		=> $category->getParent() ? $category->getParent()->getUid() : 0
+                'parent' 		=> $category->getParent() ? $category->getParent()->getUid() : 0,
             ];
         }
         return [];
     }
-
 }

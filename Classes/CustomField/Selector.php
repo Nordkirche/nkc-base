@@ -15,19 +15,20 @@
 
 namespace Nordkirche\NkcBase\CustomField;
 
-use Nordkirche\NkcBase\Exception\ApiException;
-use TYPO3\CMS\Core\Page\PageRenderer;
 use Nordkirche\Ndk\Service\NapiService;
+use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\NkcBase\Service\ApiService;
 use TYPO3\CMS\Backend\Form\Element\AbstractFormElement;
 use TYPO3\CMS\Backend\Routing\UriBuilder;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Imaging\Icon;
+use TYPO3\CMS\Core\Imaging\IconFactory;
 use TYPO3\CMS\Core\Localization\LanguageService;
+use TYPO3\CMS\Core\Page\JavaScriptModuleInstruction;
+use TYPO3\CMS\Core\Page\PageRenderer;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\MathUtility;
 use TYPO3\CMS\Core\Utility\StringUtility;
-use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 
 /**
  * Generation of elements of the type "group"
@@ -115,6 +116,8 @@ class Selector extends AbstractFormElement
         $pageRenderer = GeneralUtility::makeInstance(PageRenderer::class);
         $pageRenderer->loadRequireJsModule('TYPO3/CMS/NkcBase/backend');
 
+        $iconFactory = GeneralUtility::makeInstance(IconFactory::class);
+
         $languageService = $this->getLanguageService();
         $backendUser = $this->getBackendUserAuthentication();
         $resultArray = $this->initializeResultArray();
@@ -145,7 +148,7 @@ class Selector extends AbstractFormElement
 
         $uriBuilder = GeneralUtility::makeInstance(UriBuilder::class);
         $wizardUrl = $uriBuilder->buildUriFromRoute('wizard_napi', ['P' => ['field' => $md5OfElName, 'hmac' => $hmac, 'allowed' => $allowed]]);
-        $wizardLink = sprintf("this.blur();vHWin=window.open('%s','popUpID%s','height=600,width=800,status=0,menubar=0,scrollbars=1');vHWin.focus();return false;", $wizardUrl, $hmac);
+        $wizardButton = $this->renderWizardButton($wizardUrl, $hmac, $iconFactory);
 
         $maxItems = isset($config['maxitems']) ?: '';
 
@@ -282,7 +285,7 @@ class Selector extends AbstractFormElement
             $html[] =       '<div class="autocomplete t3-form-suggest-container">';
             $html[] =           '<div class="input-group">';
             $html[] =               '<span class="input-group-addon">';
-            $html[] =                   $this->iconFactory->getIcon('actions-search', Icon::SIZE_SMALL)->render();
+            $html[] =                   $iconFactory->getIcon('actions-search', Icon::SIZE_SMALL)->render();
             $html[] =               '</span>';
             $html[] =               '<input type="search" class="napi-search form-control"';
             $html[] =                   ' id="' . $md5OfElName . '-search" data-allowed="' . $allowed . '" data-field-id="' . $md5OfElName . '"';
@@ -313,13 +316,13 @@ class Selector extends AbstractFormElement
         $html[] =       '</div>';
         $html[] =       '<div class="form-wizards-items-aside">';
         $html[] =           '<div class="btn-group-vertical">';
-        if ($maxItems > 1 && $size >=5 && $showMoveIcons) {
+        if ($maxItems > 1 && $size >= 5 && $showMoveIcons) {
             $html[] =           '<a href="#"';
             $html[] =               ' class="btn btn-default t3js-btn-option t3js-btn-moveoption-top"';
             $html[] =               ' data-fieldname="' . htmlspecialchars($elementName) . '"';
             $html[] =               ' title="' . htmlspecialchars($languageService->sL('LLL:EXT:core/Resources/Private/Language/locallang_core.xlf:labels.move_to_top')) . '"';
             $html[] =           '>';
-            $html[] =               $this->iconFactory->getIcon('actions-move-to-top', Icon::SIZE_SMALL)->render();
+            $html[] =               $iconFactory->getIcon('actions-move-to-top', Icon::SIZE_SMALL)->render();
             $html[] =           '</a>';
         }
         if ($maxItems > 1 && $size > 1 && $showMoveIcons) {
@@ -328,14 +331,14 @@ class Selector extends AbstractFormElement
             $html[] =               ' data-fieldname="' . htmlspecialchars($elementName) . '"';
             $html[] =               ' title="' . htmlspecialchars($languageService->sL('LLL:EXT:core/Resources/Private/Language/locallang_core.xlf:labels.move_up')) . '"';
             $html[] =           '>';
-            $html[] =               $this->iconFactory->getIcon('actions-move-up', Icon::SIZE_SMALL)->render();
+            $html[] =               $iconFactory->getIcon('actions-move-up', Icon::SIZE_SMALL)->render();
             $html[] =           '</a>';
             $html[] =           '<a href="#"';
             $html[] =               ' class="btn btn-default t3js-btn-option t3js-btn-moveoption-down"';
             $html[] =               ' data-fieldname="' . htmlspecialchars($elementName) . '"';
             $html[] =               ' title="' . htmlspecialchars($languageService->sL('LLL:EXT:core/Resources/Private/Language/locallang_core.xlf:labels.move_down')) . '"';
             $html[] =           '>';
-            $html[] =               $this->iconFactory->getIcon('actions-move-down', Icon::SIZE_SMALL)->render();
+            $html[] =               $iconFactory->getIcon('actions-move-down', Icon::SIZE_SMALL)->render();
             $html[] =           '</a>';
         }
         if ($maxItems > 1 && $size >= 5 && $showMoveIcons) {
@@ -344,7 +347,7 @@ class Selector extends AbstractFormElement
             $html[] =               ' data-fieldname="' . htmlspecialchars($elementName) . '"';
             $html[] =               ' title="' . htmlspecialchars($languageService->sL('LLL:EXT:core/Resources/Private/Language/locallang_core.xlf:labels.move_to_bottom')) . '"';
             $html[] =           '>';
-            $html[] =               $this->iconFactory->getIcon('actions-move-to-bottom', Icon::SIZE_SMALL)->render();
+            $html[] =               $iconFactory->getIcon('actions-move-to-bottom', Icon::SIZE_SMALL)->render();
             $html[] =           '</a>';
         }
         if ($showDeleteControl) {
@@ -354,14 +357,14 @@ class Selector extends AbstractFormElement
             $html[] =               ' data-uid="' . htmlspecialchars($row['uid']) . '"';
             $html[] =               ' title="' . htmlspecialchars($languageService->sL('LLL:EXT:core/Resources/Private/Language/locallang_core.xlf:labels.remove_selected')) . '"';
             $html[] =           '>';
-            $html[] =               $this->iconFactory->getIcon('actions-selection-delete', Icon::SIZE_SMALL)->render();
+            $html[] =               $iconFactory->getIcon('actions-selection-delete', Icon::SIZE_SMALL)->render();
             $html[] =           '</a>';
         }
         $html[] =           '</div>';
         $html[] =       '</div>';
         $html[] =       '<div class="form-wizards-items-aside">';
         $html[] =           '<div class="btn-group-vertical">';
-        $html[] =               $this->renderWizardButton($wizardLink);
+        $html[] =               $wizardButton;
         $html[] =           '</div>';
         $html[] =       '</div>';
         if (!empty($fieldWizardHtml)) {
@@ -373,33 +376,20 @@ class Selector extends AbstractFormElement
         $html[] =   '<input type="hidden" id="tceforms-multiselect-value-' . $md5OfElName . '" name="' . htmlspecialchars($elementName) . '" value="' . htmlspecialchars(implode(',', $listOfSelectedValues)) . '" />';
         $html[] = '</div>';
 
-        $resultArray['requireJsModules'][] = ['TYPO3/CMS/Backend/FormEngine/Element/GroupElement' => '
-            function(GroupElement) {
-                new GroupElement(' . GeneralUtility::quoteJSvalue($fieldId) . ');
-            }'
-        ];
+        $resultArray['javaScriptModules'][] = JavaScriptModuleInstruction::create(
+            '@typo3/backend/form-engine/element/group-element.js'
+        )->instance($fieldId);
 
         $resultArray['html'] = implode(LF, $html);
         return $resultArray;
     }
 
     /**
-     * @param $link
      * @return string
      */
-    protected function renderWizardButton($link)
+    protected function renderWizardButton($url, $hmac, $iconFactory)
     {
-        return sprintf('<a onclick="%s" class="btn btn-default" href="#">
-				<span alt="Browse for records" title="Browse for records">
-					<span class="t3js-icon icon icon-size-small icon-state-default icon-actions-insert-record" data-identifier="actions-insert-record">
-						<span class="icon-markup">
-							<svg class="icon-color">
-							    <use xlink:href="/typo3/sysext/core/Resources/Public/Icons/T3Icons/sprites/actions.svg#actions-folder"></use>
-							</svg>
-						</span>
-					</span>
-				</span>
-			</a>', $link);
+        return sprintf('<a data-url="%s" data-hmac="%s" class="btn btn-default napi-wizard" href="#">%s</a>', $url, $hmac, $iconFactory->getIcon('actions-insert-record', Icon::SIZE_SMALL)->render());
     }
 
     /**
@@ -413,7 +403,7 @@ class Selector extends AbstractFormElement
     /**
      * @return LanguageService
      */
-    protected function getLanguageService()
+    protected function getLanguageService(): LanguageService
     {
         return $GLOBALS['LANG'];
     }

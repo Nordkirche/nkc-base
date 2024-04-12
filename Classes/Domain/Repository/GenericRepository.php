@@ -9,7 +9,6 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class GenericRepository implements GenericRepositoryInterface
 {
-
     /**
      * @param string $object
      * @param string $id
@@ -61,7 +60,7 @@ class GenericRepository implements GenericRepositoryInterface
 
             $getterName = sprintf('get%s', ucfirst($fieldName));
             if (!method_exists($result, $getterName)) {
-                if (strpos($fieldName, '.') !== false) {
+                if (str_contains($fieldName, '.')) {
                     $fieldNames = GeneralUtility::trimExplode('.', $fieldName);
                     $objectGetterName = sprintf('get%s', ucfirst($fieldNames[0]));
                     $getterName =   sprintf('get%s', ucfirst($fieldNames[1]));

@@ -9,10 +9,10 @@ namespace Nordkirche\NkcBase\ViewHelpers;
  * LICENSE.txt file that was distributed with this source code.
  */
 
-use TYPO3Fluid\Fluid\Core\Rendering\RenderingContextInterface;
-use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractTagBasedViewHelper;
 use TYPO3\CMS\Core\Page\PageRenderer;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3Fluid\Fluid\Core\Rendering\RenderingContextInterface;
+use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractTagBasedViewHelper;
 
 /**
  * ViewHelper to render meta tags
@@ -35,7 +35,6 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
  */
 class MetaTagViewHelper extends AbstractTagBasedViewHelper
 {
-
     /**
      * @var string
      */
@@ -64,9 +63,9 @@ class MetaTagViewHelper extends AbstractTagBasedViewHelper
         // Skip if current record is part of tt_content CType shortcut
         if (!empty($GLOBALS['TSFE']->recordRegister)
             && is_array($GLOBALS['TSFE']->recordRegister)
-            && strpos(array_keys($GLOBALS['TSFE']->recordRegister)[0], 'tt_content:') !== false
+            && str_contains(array_keys($GLOBALS['TSFE']->recordRegister)[0], 'tt_content:')
             && !empty($GLOBALS['TSFE']->currentRecord)
-            && strpos($GLOBALS['TSFE']->currentRecord, 'tx_news_domain_model_news:') !== false
+            && str_contains($GLOBALS['TSFE']->currentRecord, 'tx_news_domain_model_news:')
         ) {
             return;
         }

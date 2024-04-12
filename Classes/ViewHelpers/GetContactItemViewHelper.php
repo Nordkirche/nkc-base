@@ -2,8 +2,8 @@
 
 namespace Nordkirche\NkcBase\ViewHelpers;
 
-use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
 use Nordkirche\Ndk\Domain\Model\ContactItem;
+use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
 
 /**
  * If a contact item is found, this viewhelper will render its children and provide the item in a variable.

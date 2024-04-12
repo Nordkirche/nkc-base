@@ -2,9 +2,9 @@
 
 namespace Nordkirche\NkcBase\Controller;
 
-use Nordkirche\NkcBase\Exception\ApiException;
-use Nordkirche\Ndk\Domain\Repository\AbstractRepository;
 use Nordkirche\Ndk\Domain\Query\AbstractQuery;
+use Nordkirche\Ndk\Domain\Repository\AbstractRepository;
+use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\NkcBase\Service\ApiService;
 use Psr\Http\Message\ServerRequestInterface;
 use TYPO3\CMS\Core\Http\JsonResponse;
@@ -12,7 +12,6 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class AjaxController
 {
-
     /**
      * @param ServerRequestInterface $request
      * @return JsonResponse
@@ -83,7 +82,7 @@ class AjaxController
             $items[] = [
                 'id'	=> $object->getId(),
                 'name'	=> htmlspecialchars($object->getLabel()),
-                'uri'	=> (string)$object
+                'uri'	=> (string)$object,
             ];
         }
 

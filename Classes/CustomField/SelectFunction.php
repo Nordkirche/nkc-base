@@ -2,13 +2,12 @@
 
 namespace Nordkirche\NkcBase\CustomField;
 
-use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\Ndk\Service\NapiService;
+use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\NkcBase\Service\ApiService;
 
 class SelectFunction
 {
-
     /**
      * @param $config
      * @return mixed
@@ -24,7 +23,7 @@ class SelectFunction
                 if ($object->getInstitution()) {
                     $config['items'][] = [
                         '0' => $object->getInstitution()->getLabel(),
-                        '1' => (string)$object
+                        '1' => (string)$object,
                     ];
                 }
             }

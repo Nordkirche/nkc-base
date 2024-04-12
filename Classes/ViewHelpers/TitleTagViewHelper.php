@@ -1,8 +1,9 @@
 <?php
+
 namespace Nordkirche\NkcBase\ViewHelpers;
 
+use Nordkirche\NkcBase\Provider\TitleProvider;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Extbase\Utility\DebuggerUtility;
 use TYPO3Fluid\Fluid\Core\Rendering\RenderingContextInterface;
 use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
 use TYPO3Fluid\Fluid\Core\ViewHelper\Traits\CompileWithRenderStatic;
@@ -35,8 +36,7 @@ class TitleTagViewHelper extends AbstractViewHelper
     ) {
         $content = trim($renderChildrenClosure());
         if (!empty($content)) {
-            GeneralUtility::makeInstance(\Nordkirche\NkcBase\Provider\TitleProvider::class)->setTitle($content);
+            GeneralUtility::makeInstance(TitleProvider::class)->setTitle($content);
         }
-
     }
 }

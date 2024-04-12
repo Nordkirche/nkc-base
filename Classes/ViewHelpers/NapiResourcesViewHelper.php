@@ -2,11 +2,11 @@
 
 namespace  Nordkirche\NkcBase\ViewHelpers;
 
-use TYPO3Fluid\Fluid\Core\ViewHelper\Exception;
+use Nordkirche\Ndk\Domain\Model\ResourcePlaceholder;
 use Nordkirche\Ndk\Service\NapiService;
 use Nordkirche\NkcBase\Service\ApiService;
-use Nordkirche\Ndk\Domain\Model\ResourcePlaceholder;
 use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
+use TYPO3Fluid\Fluid\Core\ViewHelper\Exception;
 
 /**
  * NapiResourcesViewHelper
