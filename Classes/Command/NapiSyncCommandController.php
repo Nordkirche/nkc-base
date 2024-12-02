@@ -66,7 +66,7 @@ class NapiSyncCommandController extends Command
      * @return int
      * @throws ApiException
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $pid = $input->getArgument('pid');
 

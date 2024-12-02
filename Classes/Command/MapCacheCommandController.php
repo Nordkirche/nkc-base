@@ -94,7 +94,7 @@ class MapCacheCommandController extends Command
      * @throws \Exception
      * @throws \TYPO3\CMS\Extbase\Object\Exception
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $contentUids = $input->getArgument('contentUids');
         $baseUrl  = $input->getArgument('baseUrl');
