@@ -21,16 +21,10 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Extbase\Object\ObjectManager;
 use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
 
 class MapCacheCommandController extends Command
 {
-    /**
-     * @var ObjectManager
-     */
-    protected $objectManager;
-
     /**
      * Configure the command by defining the name, options and arguments
      */
@@ -92,7 +86,6 @@ class MapCacheCommandController extends Command
      * @param OutputInterface $output
      * @return int
      * @throws \Exception
-     * @throws \TYPO3\CMS\Extbase\Object\Exception
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
@@ -107,7 +100,6 @@ class MapCacheCommandController extends Command
         $io = new SymfonyStyle($input, $output);
         $io->title('Start map cache warmup');
 
-        $this->objectManager = GeneralUtility::makeInstance(ObjectManager::class);
         $persistenceManager = GeneralUtility::makeInstance(PersistenceManager::class);
 
         if (trim($contentUids)) {
@@ -152,7 +144,7 @@ class MapCacheCommandController extends Command
             }
 
             if ($className) {
-                $controller = $this->objectManager->get($className);
+                $controller = GeneralUtility::makeInstance($className);
                 $flexformSettings = $this->getFlexFormData($content);
                 $flexformSettings['settings']['backendContext'] = 1;
                 $controller->setSettings($flexformSettings['settings']);
