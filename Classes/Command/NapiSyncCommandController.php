@@ -26,12 +26,11 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Extbase\Object\ObjectManager;
 
 class NapiSyncCommandController extends Command
 {
     /**
-     * @var \TYPO3\CMS\Extbase\Domain\Repository\CategoryRepository
+     * @var \Nordkirche\NkcBase\Domain\Repository\CategoryRepository
      */
     protected $categoryRepository;
 
@@ -39,11 +38,6 @@ class NapiSyncCommandController extends Command
      * @var Api
      */
     protected $api;
-
-    /**
-     * @var ObjectManager
-     */
-    protected $objectManager;
 
     /**
      * Configure the command by defining the name, options and arguments
@@ -66,14 +60,14 @@ class NapiSyncCommandController extends Command
      * @return int
      * @throws ApiException
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $pid = $input->getArgument('pid');
 
         $io = new SymfonyStyle($input, $output);
         $io->title('Start napi sync');
 
-        $this->categoryRepository = GeneralUtility::makeInstance(\TYPO3\CMS\Extbase\Domain\Repository\CategoryRepository::class);
+        $this->categoryRepository = GeneralUtility::makeInstance(\Nordkirche\NkcBase\Domain\Repository\CategoryRepository::class);
 
         $this->api = ApiService::get();
         $repository = $this->api->factory(CategoryRepository::class);

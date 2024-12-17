@@ -303,13 +303,11 @@ class BaseController extends ActionController
     /**
      * @return array
      * @throws InvalidConfigurationTypeException
-     * @throws \TYPO3\CMS\Extbase\Object\Exception
      */
     protected function getTypoScriptConfiguration()
     {
-        $objectManager = GeneralUtility::makeInstance(ObjectManager::class);
-        $configurationManager = $objectManager->get(ConfigurationManager::class);
-        $typoScriptService = $objectManager->get(TypoScriptService::class);
+        $configurationManager = GeneralUtility::makeInstance(ConfigurationManager::class);
+        $typoScriptService = GeneralUtility::makeInstance(TypoScriptService::class);
         return $typoScriptService->convertTypoScriptArrayToPlainArray($configurationManager->getConfiguration(ConfigurationManagerInterface::CONFIGURATION_TYPE_FULL_TYPOSCRIPT));
     }
 
