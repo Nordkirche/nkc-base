@@ -13,7 +13,7 @@ Die Extension stellt einige grundlegende Funktionen für die Nordkirche API kons
 Diese Extension benötigt
 
     nordkirche/NDK ^2.0
-    TYPO3 11.5
+    TYPO3 12.4
 
 ## Installation
 Die Installation der Extension erfolgt über composer, da bei dieser Installation auch alle Abhängigkeiten mit installiert werden müssen.
