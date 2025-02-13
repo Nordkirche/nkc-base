@@ -13,3 +13,6 @@ $GLOBALS['TYPO3_CONF_VARS']['SYS']['formEngine']['nodeRegistry'][1600328581] = [
     'priority' => 40,
     'class' => Selector::class,
 ];
+
+$GLOBALS['TYPO3_CONF_VARS']['SYS']['routing']['aspects']['GenericMapper'] =
+    \Nordkirche\NkcBase\Routing\Aspect\GenericMapper::class;

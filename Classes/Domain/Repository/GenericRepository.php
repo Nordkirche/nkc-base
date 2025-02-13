@@ -4,7 +4,6 @@ namespace Nordkirche\NkcBase\Domain\Repository;
 
 use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\NkcBase\Service\ApiService;
-use SIMONKOEHLER\Slug\Domain\Repository\GenericRepositoryInterface;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class GenericRepository implements GenericRepositoryInterface
