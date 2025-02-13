@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<xliff version="1.0">
+    <file source-language="de" datatype="plaintext" original="messages" product-name="nkc_base" date="2017-05-21T15:08:27+02:00">
+        <header/>
+        <body>
+            <trans-unit id="tx_slug_mapping">
+                <source>NAPI Slug Cache</source>
+            </trans-unit>
+            <trans-unit id="tx_slug_mapping.object_name">
+                <source>NAPI Object Type</source>
+            </trans-unit>
+            <trans-unit id="tx_slug_mapping.object_id">
+                <source>NAPI Object ID</source>
+            </trans-unit>
+        </body>
+    </file>
+</xliff>
