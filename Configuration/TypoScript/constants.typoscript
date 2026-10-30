@@ -1,0 +1,6 @@
+# Defaults for the classic static template. Site set users configure
+# these values via the site settings instead.
+nkcBase.paginate {
+  itemsPerPage = 20
+  maximumNumberOfLinks = 3
+}

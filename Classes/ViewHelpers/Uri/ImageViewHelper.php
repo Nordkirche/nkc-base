@@ -1,43 +1,36 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Nordkirche\NkcBase\ViewHelpers\Uri;
 
 use Nordkirche\Ndk\Domain\Model\File\Image;
-use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractTagBasedViewHelper;
+use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
 
-// @todo: create a trait which implements the fallback images, so uri. and regular image viewhelepr can share
-class ImageViewHelper extends AbstractTagBasedViewHelper
+/**
+ * Returns the URL of an NDK image in the requested size
+ *
+ * <nkcbase:uri.image image="{person.picture}" width="300c" height="200c" />
+ */
+class ImageViewHelper extends AbstractViewHelper
 {
-    /**
-     * Initialize arguments.
-     */
-    public function initializeArguments()
+    public function initializeArguments(): void
     {
-        parent::initializeArguments();
-        $this->registerArgument('image', 'object', 'Image', false, null);
+        $this->registerArgument('image', 'object', 'NDK image');
         $this->registerArgument('width', 'string', 'Width', false, '');
         $this->registerArgument('height', 'string', 'Height', false, '');
     }
 
-    /**
-     * Accepts NDK image objects and requests resized versions
-     *
-     * @return string
-     */
     public function render(): string
     {
-        /** @var Image $image */
         $image = $this->arguments['image'];
-        $width = $this->arguments['width'];
-        $height = $this->arguments['height'];
-
-        if (!$image) {
+        if (!$image instanceof Image) {
             return '';
         }
 
         try {
-            return $image->render($width, $height);
-        } catch (\Exception $e) {
+            return (string)$image->render((string)$this->arguments['width'], (string)$this->arguments['height']);
+        } catch (\Exception) {
             return '';
         }
     }

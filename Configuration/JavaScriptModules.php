@@ -8,6 +8,6 @@ return [
         'backend.form',
     ],
     'imports' => [
-        '@typo3/napi-wizard.js' => 'EXT:nck_base/Resources/Public/JavaScript/napi-wizard.js',
+        '@nordkirche/nkc-base/' => 'EXT:nkc_base/Resources/Public/JavaScript/',
     ],
 ];

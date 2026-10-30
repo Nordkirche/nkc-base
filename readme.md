@@ -1,29 +1,35 @@
 # TYPO3 Extension nkc_base
 
-Die Extension stellt einige grundlegende Funktionen für die Nordkirche API konsumierenden Extensions (nkc_address, nkc_event) zur Verfügung. Dazu gehören
+Die Extension stellt grundlegende Funktionen für Extensions zur Verfügung, die die
+Nordkirche API (NAPI) konsumieren (nkc_address, nkc_event, ...):
 
-* einen ApiService für das NDK
+* einen Service für das NDK (`NdkApiFactory`, statische Fassade `ApiService`)
 * einen Base-Controller für die NAPI Extensions
-* ein TCA- bzw. Flexform-Feld für das TYPO3 Backend, um auf NAPI Elemente zuzugreifen
-* einen Scheduler Job für die Synchronisierung der Kategorien mit der NAPI
-* einen Scheduler Job für den Warm-Up des Karten-Marker Caches
+* ein FormEngine-Feld für das TYPO3 Backend, um NAPI Elemente auszuwählen
+* einen Routing-Aspect für sprechende URLs von NAPI Objekten (`GenericMapper`)
+* einen Command für die Synchronisierung der Kategorien mit der NAPI
+* einen Cache für Karten-Marker samt Command zum Aufwärmen
 * diverse ViewHelper für die Ausgabe und das Handling von NAPI Inhalten
 
 ## Voraussetzungen
-Diese Extension benötigt
 
-    nordkirche/NDK ^2.0
-    TYPO3 12.4
+* TYPO3 13.4 LTS oder 14.3 LTS
+* PHP 8.2 bis 8.5
+* nordkirche/ndk 3.x
 
 ## Installation
-Die Installation der Extension erfolgt über composer, da bei dieser Installation auch alle Abhängigkeiten mit installiert werden müssen.
+
+Die Installation erfolgt über Composer, da dabei auch das NDK installiert wird:
 
     composer req nordkirche/nkc-base
 
+Binden Sie anschließend das Site Set **Nordkirche NAPI Client Base Library**
+(`nordkirche/nkc-base`) in Ihre Site-Konfiguration ein. Alternativ steht weiterhin
+das statische TypoScript-Template zur Verfügung.
 
-Konfigurieren Sie anschließend den NAPI Zugang im Bereich der Extension Konfiguration. Sie erhalten Ihren NAPI Zugang beim AfÖ der Nordkirche.
-
-Alternativ können Sie in der AdditionalConfiguration.php die Konfiguration hinterlegen.
+Konfigurieren Sie den NAPI Zugang in der Extension-Konfiguration. Den Zugang erhalten
+Sie beim AfÖ der Nordkirche. Alternativ können Sie die Konfiguration in der
+`config/system/additional.php` hinterlegen:
 
     $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['nkc_base'] = [
         'NDK_NAPI_PROTOCOL' => 'https',
@@ -33,151 +39,332 @@ Alternativ können Sie in der AdditionalConfiguration.php die Konfiguration hint
         'NDK_NAPI_VERSION' => '1',
         'NDK_NAPI_USER_ID' => '*******',
         'NDK_NAPI_ACCESS_TOKEN' => '*******',
-        'NDK_NAPI_TIMEOUT' => 30
+        'NDK_NAPI_TIMEOUT' => 30,
     ];
 
+## Zugriff auf das NDK
 
-## ApiService
-Der APIService stellt ausschließlich statische Methoden bereit, um die Initialisierung und Nutzung des NDK zu vereinfachen
+In eigenem Code wird die `NdkApiFactory` per Dependency Injection genutzt. Sie liefert
+die eine NDK-Instanz der Installation:
 
-### Die Methoden
+    public function __construct(private readonly NdkApiFactory $ndkApiFactory) {}
 
-#### ApiService::get()
-Der Aufruf erfolgt ohne Parameter. Die Methode liefert eine NDK Instanz zurück.
-Sollte noch keine Instanz im Service registriert sein, wird eine neue erstellt. Dabei greift der Service auf Zugangsdaten / Konfiguration aus der Extension Configuration (ext_conf_template.txt) zurück.
-
-#### ApiService::getRepository($object)
-Beim Aufruf wird ein NAPI Objektname erwartet (event, person, institution, ...). Die Methode liefert das Repository für das Objekt zurück, mit dessen Hilfe dann ein Request gegen die NAPI vorgenommen werden kann.
-
-#### ApiService::getQuery($object)
-Beim Aufruf wird ein NAPI Objektname erwartet (event, person, institution, ...). Die Methode liefert ein Query für das Objekt zurück, mit dessen Hilfe dann ein Query gebaut werden kann.
-
-#### ApiService::getAllItems($repository, $query, $includes = [], $pageSize = 50)
-Die NAPI liefert aus Gründen der Performance pro Request maximal 99 Objekte zurück. Weitere Objekte lassen sich nur durch Paginierung abrufen. Diese Methode ein Helper, um wirklich alle Objekte für ein Query abzurufen.
-
-    $repository - Repository Instanz
-    $query - Query Instanz
-    $includes - ein Array mit den Includes (siehe NDK Dokumentation)
-    $pageSize - die Anzahl Objekte pro Abruf
-
-### Code Beispiele
-
-#### Eine Repository Instanz über die API Factory holen
-    $api = \Nordkirche\NkcBase\ApiService::get();
+    $api = $this->ndkApiFactory->getApi();
     $eventRepository = $api->factory(\Nordkirche\Ndk\Domain\Repository\EventRepository::class);
 
-#### Eine Repository Instanz über den ApiService holen
-    $eventRepository = \Nordkirche\NkcBase\ApiService::getRepository('event');
+Für bestehenden Code gibt es weiterhin die statische Fassade `ApiService`:
 
-#### Ein Veranstaltungs-Query bauen und gegen die NAPI anfragen
-    $eventRepository = $api->factory(\Nordkirche\Ndk\Domain\Repository\EventRepository::class);
-    $eventQuery = \Nordkirche\NkcBase\ApiService::getQuery('event');
+* `ApiService::get()` liefert die NDK-Instanz.
+* `ApiService::getRepository($object)` liefert das Repository für ein NAPI Objekt
+  (`event`, `person`, `institution`, ...).
+* `ApiService::getQuery($object)` liefert ein neues Query für ein NAPI Objekt.
+* `ApiService::getAllItems($repository, $query, $includes = [], $pageSize = 50)` holt
+  alle Seiten eines Queries und liefert ein Array von NAPI Objekten.
+* `ApiService::search($object, $search, $pageSize = 20)` führt eine Volltextsuche aus.
 
-    # Alle Veranstaltungen ab heute
-    $eventQuery->setTimeFromStart(new \DateTime(date('Y-m-d')));
+Objektnamen dürfen nur aus Buchstaben bestehen; unbekannte Namen führen zu einer
+`ApiException`.
+
+### Beispiel
+
+    $eventRepository = ApiService::getRepository('event');
+    $eventQuery = ApiService::getQuery('event');
+
+    // Alle Veranstaltungen ab heute
+    $eventQuery->setTimeFromStart(new \DateTime('today'));
 
     $events = $eventRepository->get($eventQuery);
-    $allEvents = \Nordkirche\NkcBase\ApiService\ApiService::getAllItems($eventRepository, $eventQuery);
-
-Das Ergebnis ist ein Array von NAPI Objekten
+    $allEvents = ApiService::getAllItems($eventRepository, $eventQuery);
 
 ### Fehlerbehandlung
-Es empfiehlt sich, für Requests gegen die NAPI ein Exception-Handling zu nutzen, damit es nicht zu Ooops Meldungen im Frontend kommt, wenn die NAPI einmal nicht schnell genug reagiert oder einen Fehler zurück gibt. Die Standard-Limitierung für Requests gegen die NAPI liegt bei 20 Sekungen und kann über die Extension-Konfiguration angepasst werden.
+
+Für Requests gegen die NAPI sollte ein Exception-Handling genutzt werden, damit eine
+langsame oder fehlerhafte NAPI nicht zu Fehlern im Frontend führt. Das Zeitlimit für
+Requests liegt bei 20 Sekunden und kann über `NDK_NAPI_TIMEOUT` angepasst werden.
 
     try {
-        # Veranstaltungen holen
         $events = $eventRepository->get($eventQuery);
     } catch (\Exception $e) {
-        # Fehlerbahandlung
-        ...
+        // Fehlerbehandlung
     }
 
-Wenn Sie prüfen möchten, welche NAPI Zugriffe von Ihrem System erfolgen, können Sie ein Logfile definieren, in das alle Requests protokolliert werden:
+Fehler des NDK landen im TYPO3 Log (Kanal `Nordkirche.Ndk`). Um alle NAPI Requests
+zu protokollieren, kann im Development Context ein Logfile angegeben werden:
 
-        $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['nkc_base']['NDK_LOG_FILE'] = '/shared/ndk.log';
-
-Die Log Funktion wird nur im Development Context unterstützt.
+    $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['nkc_base']['NDK_LOG_FILE'] = '/shared/ndk.log';
 
 ## Base Controller für Extbase Extensions
-Der Base-Controller sollte von einer NAPI basierten Extbase Extension beerbt werden:
 
-        class myFancyNapiController extends \Nordkirche\NkcBase\BaseController
-
-
-Der Controller bringt eine initializeAction Methode mit, die bei der Implementierung einer eigenen initializeAction Methode aufgerufen werden sollte.
-
-    class myFancyNapiController extends \Nordkirche\NkcBase\BaseController {
-
-        public function initializeAction()
+    class MyNapiController extends \Nordkirche\NkcBase\Controller\BaseController
+    {
+        public function initializeAction(): void
         {
             parent::initializeAction();
         }
     }
 
-Die Methode initialisiert
+`initializeAction()` initialisiert `$this->api` und `$this->napiService` und mergt
+Flexform-Einstellungen mit der TypoScript-Konfiguration: Settings unter
 
-* $this->api
-* $this->napiService
-
-Außerdem mergt sie Flexform Einstellungen mit TypoScript Konfigurationen.
-
-Settings, die in
-
-    plugin.tx_myfancynapi_pi1.settings.flexformDefault {
+    plugin.tx_mynapi_pi1.settings.flexformDefault {
         foo = bar
     }
 
-werden mit Flexform Feldern gemergt, welche dem folgenden Namensschema folgen
+werden mit Flexform-Feldern nach dem Schema `settings.flexform.foo` gemergt. Das
+Ergebnis liegt in `$this->settings['flexform']`.
 
-    <settings.flexform.foo></settings.flexform.foo>
+Für die Pagination stehen `setPagination()`, `getPaginationValues()`, `getItemsPerPage()`
+und `getPagination()` zur Verfügung. Die aktuelle Seite wird immer als Parameter
+übergeben.
 
-Das Ergebnis liegt im Settings Array
+`fetchList($repository, $query)` holt eine Liste. Lehnt die NAPI die Abfrage ab (HTTP 4xx,
+z. B. ein Filter, den der Endpunkt nicht kennt), gibt es ein leeres Ergebnis und einen
+Log-Eintrag statt einer Fehlerseite. Die Seite wird dann nicht gecacht, damit eine kurze
+Störung der NAPI nicht als leere Liste im Cache bleibt. Server-Fehler werden weitergereicht.
 
-    $this->settings['flexform']
+### Layouts der Listen
 
+`getTemplateLayout()` liefert das Layout des Plugins (`settings.flexform.templateLayout`),
+sonst `settings.templateLayout` oder `Default`; `getLayoutPartial('Event/Teaser')` das passende
+Partial `Event/Teaser/<Layout>`, wenn es existiert. Die Auswahl im Flexform ergänzt
+`Nordkirche\NkcBase\Backend\TemplateLayouts->addItems` um Einträge aus dem Page TSconfig:
+
+    <itemsProcFunc>Nordkirche\NkcBase\Backend\TemplateLayouts->addItems</itemsProcFunc>
+    <templateLayouts>tx_nkcevent.templateLayouts</templateLayouts>
+
+### Institution der Site
+
+`QueryFilter::siteInstitutions($settings['siteInstitutions'])` (bzw. `QueryFilter::ids()`) macht
+aus „2658, napi://resource/institutions/7“ die IDs; nicht aufgelöste Platzhalter wie
+`{rootline:…}` ergeben keine ID.
+
+### Vordefinierte Suchwerte (searchFilter.js)
+
+`Resources/Public/JavaScript/searchFilter.js` macht Listen mit vordefinierten Werten in den
+Suchformularen klickbar (Orte, Ortsteile, Rubriken von nkc_address und nkc_event). Die Liste
+nennt das Feld `…[searchRequest][<feld>]` desselben Formulars:
+
+    <ul data-search-field="city" data-search-reset="location">
+        <li data-value="">Orte</li>                       <!-- leert das Feld -->
+        <li data-value="Kiel"><a href="#" role="button">Kiel</a>
+            <ul data-search-field="location" data-search-parent-field="city">
+                <li data-value="Dom">Dom</li>             <!-- setzt location und city -->
+
+Ein Klick setzt das Feld und schickt das Formular ab. Theme-Skripte können das übernehmen,
+indem ihr Klick-Handler vorher `event.preventDefault()` aufruft. Eingebunden wird das Skript von
+den Templates per `<f:asset.script identifier="nkcBaseSearchFilter" …>`.
 
 ## TCA Feld zur Auswahl von NAPI Objekten
-Für das Backend bringt die Extension ein neues FormEngine Feld mit, mit dem sich NAPI Elemente auswählen lassen. Dieses Feld kann im TCA oder in PlugIn Flexforms eingesetzt werden.
 
-
-### Beispiel
+Das FormEngine-Feld `napiItemSelector` kann im TCA oder in Flexforms eingesetzt werden.
+Es bietet eine Suggest-Suche und einen Such-Wizard.
 
     <settings.flexform.eventCollection>
-        <TCEforms>
-            <label>Diese Veranstaltungen darstellen</label>
-            <config>
-                <type>user</type>
-                <renderType>napiItemSelector</renderType>
-                <allowed>event</allowed>
-                <minItems>0</minItems>
-                <maxItems>99</maxItems>
-                <size>10</size>
-            </config>
-        </TCEforms>
+        <label>Diese Veranstaltungen darstellen</label>
+        <config>
+            <type>user</type>
+            <renderType>napiItemSelector</renderType>
+            <allowed>event</allowed>
+            <maxitems>99</maxitems>
+            <size>10</size>
+        </config>
     </settings.flexform.eventCollection>
 
-## Scheduler Job zur Synchronisierung von Kategorien
-Die NAPI verwendet Kategorien, die als Sys-Categories in das eigene TYPO3 System übernommen werden können. Diese Extension stellt dafür einen Scheduler Job zur Verfügung, der z.B. einmal täglich ausgeführt werden kann.
+## Sprechende URLs (GenericMapper)
 
-Wichtig: Bitte beachten Sie, dass bei der Verwendung des Jobs selbst angelegte Kategorien überschrieben werden.
+Der Routing-Aspect `GenericMapper` macht aus NAPI IDs lesbare URL-Segmente:
 
+    aspects:
+      event:
+        type: GenericMapper
+        mapper: nkc_base
+        object: event              # person, institution, event, ...
+        routeFieldResult: '{title}' # Getter des NDK-Objekts, auch verschachtelt: '{name.first}-{name.last}'
 
-## Scheduler Job für den Map Cache Warmup
-Wenn Sie Karten mit vielen Markern darstellen möchten, können Sie den Cache für die Marker durch einen Scheduler Job aufwärmen.
+Die Slugs werden in der Tabelle `tx_slug_mapping` gespeichert und nur einmal pro Objekt
+bei der NAPI angefragt; gleiche Slugs bekommen `-1`, `-2` usw. Optionen:
+`prependSlashInSlug`, `fallbackCharacter`. Ändert sich ein Titel in der NAPI, bleibt der
+alte Slug gültig, bis der Eintrag in `tx_slug_mapping` gelöscht wird.
 
-Geben Sie in der Task-Konfiguration die betroffenen Content Elemente an (uid), die berücksichtigt werden sollen.
+### Routen aus den Site Sets
+
+nkc_address und nkc_event bringen ihre Route Enhancer in ihrem Site Set mit
+(`Configuration/Sets/<Set>/route-enhancers.yaml`). Wer das Set einbindet, bekommt die
+sprechenden URLs ohne Eintrag in der Site-Konfiguration.
+
+* **TYPO3 14** lädt die Dateien selbst.
+* **TYPO3 13** kann das noch nicht; nkc_base mischt sie dort ein (`Routing\SetRouteEnhancers`).
+  Das gilt für jedes Set mit einer `route-enhancers.yaml`, nach denselben Regeln wie in v14.
+
+Die Routen nutzen den Enhancer-Typ `NkcExtbase` von nkc_base. Er hat dieselben Optionen wie
+`Extbase`, bietet die Routen aber nur auf Seiten an, auf denen das Plugin liegt (CType im
+`tt_content` der Seite). Sonst würden sich alle Listen `/seite/{currentPage}` teilen und die
+zuerst definierte gewinnen. Wird ein Plugin auf einer anderen Seite eingebunden (z. B. per
+„Datensatz einfügen“), dort `onlyOnPluginPages: false` oder `limitToPages` setzen.
+
+Die Site-Konfiguration hat immer Vorrang. Einzelne Werte überschreibt man unter demselben
+Schlüssel, z. B. nur den Slug der Personen:
+
+    routeEnhancers:
+      NkcAddressPerson:
+        aspects:
+          person:
+            routeFieldResult: '{name.last}-{name.first}'
+
+Beim Speichern im Backend-Modul „Sites“ entfernt nkc_base die unveränderten Routen der
+Sets wieder, damit sie nicht in die `config.yaml` kopiert werden. Das betrifft auch TYPO3 14.
+Nach Änderungen an einer `route-enhancers.yaml` den Cache leeren.
+
+## Synchronisierung der Kategorien
+
+    vendor/bin/typo3 nkc_base:napi_sync <pid>
+
+Übernimmt die NAPI Kategorien als `sys_category` (UID = NAPI ID). Der Command kann
+z. B. täglich über den Scheduler ausgeführt werden.
+
+**Wichtig:** Kategorien mit gleicher UID werden überschrieben.
+
+## Karten-Cache
+
+Die Marker von Karten-Inhaltselementen werden im Cache `nkcbase_mapmarkers`
+gespeichert. Die Einträge sind mit `tt_content_<uid>` und `pageId_<pid>` getaggt und
+werden automatisch geleert, wenn ein Redakteur das Inhaltselement bearbeitet.
+
+### Provider
+
+Extensions mit Karten liefern die Marker über einen Provider. Jede Klasse, die
+`MapMarkerProviderInterface` implementiert, wird automatisch registriert:
+
+    final class MapMarkerProvider implements MapMarkerProviderInterface
+    {
+        public function getSupportedPluginTypes(): array
+        {
+            return ['nkcaddress_map'];
+        }
+
+        public function buildMarkers(array $contentRow, array $settings, Site $site): array
+        {
+            // Werte, die nicht in der Flexform stehen, kommen aus den Site Settings
+            $iconName = $site->getSettings()->get('nkcAddress.map.institutionIconName');
+            ...
+            return $markers;
+        }
+    }
+
+Der Provider darf keinen Frontend-Request voraussetzen, da er auch auf der
+Kommandozeile läuft.
+
+Im Controller:
+
+    $entry = $this->mapMarkerCache->get(
+        $this->request->getAttribute('currentContentObject')->data,
+        $this->settings,
+        $this->request->getAttribute('site')
+    );
+    return $this->jsonResponse(json_encode($entry));
+
+### Cache aufwärmen
+
+    vendor/bin/typo3 nkc_base:map_cache
+
+Ohne Optionen ermittelt der Command alle sichtbaren Inhaltselemente, für die ein
+Provider registriert ist, und baut Einträge neu auf, die älter als eine Stunde sind.
+
+| Option | Bedeutung |
+| --- | --- |
+| `--content=1,2` | nur diese Inhaltselemente |
+| `--site=<identifier>` | nur Inhaltselemente einer Site |
+| `--max-age=<sekunden>` | Alter, ab dem ein Eintrag neu aufgebaut wird (Standard 3600) |
+| `--force` | alle Einträge neu aufbauen |
+| `--dry-run` | gefundene Inhaltselemente nur auflisten |
+
+Die früheren Argumente (`baseUrl`, `typeNum`, `httpUser`, ...) werden nicht mehr
+benötigt und ignoriert. Es werden keine HTTP-Requests mehr ausgeführt.
+
+Kann ein Provider die Marker nur mit dem TypoScript der Seite aufbauen (z. B. Werte aus der
+Rootline), wirft er `MapCache\Exception\FrontendRequiredException`. `nkc_base:map_cache`
+überspringt das Inhaltselement dann ohne Fehler, der erste Seitenaufruf baut die Marker auf.
+
+## NAPI-Status
+
+Das Backend-Modul **System > NAPI-Status** (nur für Admins) zeigt:
+
+* **Live-Check:** Pro Endpunkt wird ein Datensatz direkt bei der NAPI abgefragt, am
+  HTTP-Cache des NDK vorbei. Angezeigt werden Status, HTTP-Code, Gesamtzeit, die
+  Rechenzeit der NAPI (Header `x-runtime`), die Zeitanteile DNS / Verbindung / TLS /
+  Server / Übertragung und die Anzahl der Datensätze.
+* **Echter Traffic:** Anzahl, Fehlerquote, Cache-Quote sowie ⌀ und maximale Dauer aller
+  NAPI-Requests aus Frontend, Backend und CLI der letzten Stunde und der letzten 24
+  Stunden, je Endpunkt. Voraussetzung ist ein NDK mit `Configuration::addMiddleware()`
+  (NDK 3.0). Die Werte liegen in der Registry (`sys_registry`, 48 Stunden) und bleiben beim Leeren der Caches erhalten.
+* **Automatische Prüfung:** das Ergebnis des letzten Laufs von `nkc_base:napi_check`.
+
+Status-Stufen: `ok`, `slow` (langsamer als `NDK_HEALTH_SLOW_MS`), `auth` (Zugang
+abgelehnt), `down` (nicht erreichbar, Timeout, 5xx), `config` (Konfiguration
+unvollständig).
+
+### Automatische Prüfung und Alarm
+
+    vendor/bin/typo3 nkc_base:napi_check
+
+Den Command im Scheduler z. B. alle 5 Minuten ausführen. Exit-Code 1 bei `down`,
+`auth` oder `config`, so kann er auch von externem Monitoring aufgerufen werden
+(`--no-alert` verschickt keine Mails und speichert nichts).
+
+Ist `NDK_HEALTH_ALERT_RECIPIENTS` gesetzt, geht nach `NDK_HEALTH_ALERT_AFTER`
+Fehlschlägen in Folge (Standard 3) genau eine Alarm-Mail raus, und eine Entwarnung,
+sobald die NAPI wieder normal antwortet.
+
+| Einstellung | Bedeutung | Standard |
+| --- | --- | --- |
+| `NDK_HEALTH_SLOW_MS` | ab dieser Antwortzeit gilt die NAPI als langsam | 1500 |
+| `NDK_HEALTH_ENDPOINTS` | geprüfte Endpunkte | institutions,people,events,categories |
+| `NDK_HEALTH_ALERT_RECIPIENTS` | Empfänger der Alarm-Mails (kommagetrennt) | leer = kein Alarm |
+| `NDK_HEALTH_ALERT_AFTER` | Fehlschläge in Folge bis zum Alarm | 3 |
+
+### Dashboard-Widget
+
+Ist EXT:dashboard installiert, gibt es in der Gruppe „System Information“ das Widget
+**NAPI-Status** mit dem Ergebnis der letzten automatischen Prüfung und dem Traffic
+der letzten Stunde. Redakteure sehen es, wenn ihre Benutzergruppe das Widget erlaubt
+(„Erlaubte Dashboard-Widgets“); den Link zum Modul bekommen nur Benutzer mit Zugriff
+auf das Modul (Admins).
 
 ## ViewHelper
-Sie finden in den ViewHelpern jeweils ein Code-Beispiel zur Verwendung
 
-## Breaking Changes
-Das Paginate Widget wurde entfernt, da TYPO3 ab Version 11.5 keine Widgets mehr unterstützt. Die Nkc Extensions liefern nun ein Array "pagination" an das Template, im Ordner  Partials liegt ein Beispiel dafür, wie man aus diesem Attay eine Paginerung baut.
+Namespace: `Nordkirche\NkcBase\ViewHelpers`. Die ViewHelper enthalten jeweils ein
+Beispiel. `link.page` erzeugt Links über den Router der Ziel-Site und funktioniert
+auch ohne Frontend-Request, z. B. beim Aufwärmen des Karten-Caches.
 
 ## Fluid Styled Content Layout
-Diese Extension bringt ein eigenes Default Layout für Fluid Styled Content mit. Die anderen Nordkirche Extensions, die auf nkc_base basieren, laden Inhalte per AJAX nach und verwendet dafür das TypoScript CONTENT Objekt. Dieses Verfahren sorgt dafür, dass auch bei einer Extbase JSON View ein &lt;div&gt; um den Content gelegt wird. Um das zu vermeiden, gibt es ein leicht angepasstes Layout.
 
-Wir werden dies ggf. in zukünftigen Versionen ändern, so dass kein eigenes Layout mehr notwenig ist.
+Die Extension bringt ein eigenes Default Layout für Fluid Styled Content mit. Die
+Nordkirche Extensions laden Inhalte per AJAX nach und verwenden dafür das TypoScript
+CONTENT Objekt. Mit `settings.additionalConfig.plainResult` wird der Inhalt ohne
+umschließendes `<div>` ausgegeben.
+
+## Upgrade auf Version 13
+
+* TYPO3 13.4 / 14.3, PHP 8.2 oder neuer
+* `BaseController::getWidgetValues()` wurde entfernt. Die aktuelle Seite wird als
+  Parameter übergeben.
+* `BaseController::initializeAction()` hat den Rückgabetyp `void`. Abgeleitete
+  Controller müssen die Signatur anpassen.
+* Der Karten-Cache läuft über `MapMarkerProviderInterface` und `MapMarkerCache`.
+  Die Controller-Methoden `buildCache()` und der Parameter `forceReload` werden nicht
+  mehr aufgerufen.
+* Die Backend-JavaScripts sind ES-Module (`@nordkirche/nkc-base/...`), jQuery und
+  RequireJS werden nicht mehr verwendet.
+* Neue Indizes auf `tx_slug_mapping`: bitte den Database Analyzer ausführen.
 
 ## Fehler gefunden?
-Bitte melden Sie Fehler via github
-https://github.com/Nordkirche/nkc-base
+
+Bitte melden Sie Fehler via GitHub: https://github.com/Nordkirche/nkc-base
+
+## Tests
+
+    composer install
+    composer test:unit
+    composer test:functional    # SQLite, keine Datenbank nötig
+
+Die Functional Tests laufen gegen TYPO3 13.4 und 14.3 (testing-framework ^9.2).

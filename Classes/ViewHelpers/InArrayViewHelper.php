@@ -1,28 +1,31 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Nordkirche\NkcBase\ViewHelpers;
 
 use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
 
+/**
+ * PHP in_array() for templates, returns 1 or 0
+ *
+ * <f:if condition="{nkcbase:inArray(haystack: list, needle: 'foo')}">...</f:if>
+ */
 class InArrayViewHelper extends AbstractViewHelper
 {
-    public function initializeArguments()
+    public function initializeArguments(): void
     {
-        $this->registerArgument('haystack', 'array', 'View helper haystack ', true);
-        $this->registerArgument('needle', 'string', 'View helper needle', true);
-        $this->registerArgument('strtolower', 'bool', 'Convert needle to lower case', false);
+        $this->registerArgument('haystack', 'array', 'Array to search in', true);
+        $this->registerArgument('needle', 'string', 'Value to search for', true);
+        $this->registerArgument('strtolower', 'bool', 'Convert needle to lower case', false, false);
     }
 
-    // php in_array viewhelper
-    public function render()
+    public function render(): int
     {
-        $needle = $this->arguments['needle'];
-        $haystack = $this->arguments['haystack'];
-
+        $needle = (string)$this->arguments['needle'];
         if ($this->arguments['strtolower']) {
             $needle = strtolower($needle);
         }
-
-        return in_array($needle, $haystack) ? 1 : 0;
+        return in_array($needle, (array)$this->arguments['haystack']) ? 1 : 0;
     }
 }

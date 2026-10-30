@@ -1,25 +1,31 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Nordkirche\NkcBase\Controller;
 
 use Nordkirche\Ndk\Api;
-use Nordkirche\Ndk\Domain\Model\Geocode;
-use Nordkirche\Ndk\Domain\Query\AbstractQuery;
+use Nordkirche\Ndk\Domain\Query\EventQuery;
 use Nordkirche\Ndk\Domain\Query\InstitutionQuery;
 use Nordkirche\Ndk\Domain\Query\PageQuery;
 use Nordkirche\Ndk\Domain\Query\PersonQuery;
+use Nordkirche\Ndk\Service\Exception\ClientException;
 use Nordkirche\Ndk\Service\NapiService;
 use Nordkirche\Ndk\Service\Result;
+use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\NkcBase\Service\ApiService;
+use Nordkirche\NkcBase\Service\QueryFilter;
+use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\TypoScript\TypoScriptService;
 use TYPO3\CMS\Core\Utility\ArrayUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Extbase\Configuration\ConfigurationManager;
 use TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface;
-use TYPO3\CMS\Extbase\Configuration\Exception\InvalidConfigurationTypeException;
 use TYPO3\CMS\Extbase\Mvc\Controller\ActionController;
-use TYPO3\CMS\Extbase\Object\ObjectManager;
+use TYPO3\CMS\Frontend\Cache\CacheInstruction;
 
+/**
+ * Base controller of the NAPI extensions
+ */
 class BaseController extends ActionController
 {
     /**
@@ -32,14 +38,17 @@ class BaseController extends ActionController
      */
     protected $napiService;
 
-    protected function initializeAction()
+    /**
+     * @throws ApiException
+     */
+    public function initializeAction(): void
     {
         $this->api = ApiService::get();
         $this->napiService = $this->api->factory(NapiService::class);
 
-        // Merge TS and flexform
-        if (isset($this->settings['flexformDefault']) && count($this->settings['flexformDefault'])) {
-            if (isset($this->settings['flexform']) && count($this->settings['flexform'])) {
+        // Merge TypoScript defaults and flexform
+        if (!empty($this->settings['flexformDefault']) && is_array($this->settings['flexformDefault'])) {
+            if (!empty($this->settings['flexform']) && is_array($this->settings['flexform'])) {
                 ArrayUtility::mergeRecursiveWithOverrule($this->settings['flexformDefault'], $this->settings['flexform'], true, false);
             }
             $this->settings['flexform'] = $this->settings['flexformDefault'];
@@ -49,344 +58,262 @@ class BaseController extends ActionController
     /**
      * Set pagination parameters in query
      *
-     * @param AbstractQuery $query
-     * @param int $currentPage
-     * @param bool $mergedResult
+     * @param PageQuery $query
      */
-    protected function setPagination($query, $currentPage, $mergedResult = false)
+    protected function setPagination($query, $currentPage, bool $mergedResult = false): void
     {
-        // Limit items per api request
-        if (!empty($this->settings['flexform']['paginate']['mode']) && ((int)$this->settings['flexform']['paginate']['mode'] > 0)) {
-            // Pagination is active: use page limit
-            $limit = !empty($this->settings['flexform']['paginate']['itemsPerPage']) ? (int)$this->settings['flexform']['paginate']['itemsPerPage'] : $this->settings['paginate']['itemsPerPage'];
-            $query->setPageSize($mergedResult ? floor($limit / 2) : $limit);
+        $limit = $this->getItemsPerPage($mergedResult);
 
-            // Set page
-            if ($pagination = $this->getWidgetValues()) {
-                $query->setPageNumber($pagination['currentPage']);
-            } elseif ($currentPage) {
-                $query->setPageNumber($currentPage);
+        if ($this->isPaginationActive()) {
+            $query->setPageSize($limit);
+            if ((int)$currentPage > 0) {
+                $query->setPageNumber((int)$currentPage);
             }
-        } else {
-            // Pagination is inactive: use general limit
-            $limit = !empty($this->settings['flexform']['maxItems']) ? (int)$this->settings['flexform']['maxItems'] : $this->settings['maxItems'];
-
-            if ($limit) {
-                $query->setPageSize($mergedResult ? floor($limit / 2) : $limit);
-            }
+        } elseif ($limit > 0) {
+            $query->setPageSize($limit);
         }
     }
 
     /**
-     * Helper to get the widget values
-     * @return array|bool
+     * @return array{0: int, 1: int} [startRow, numRows]
      */
-    protected function getWidgetValues()
+    protected function getPaginationValues($currentPage, bool $mergedResult = false): array
     {
-        for ($i = 0; $i <= 10; $i++) {
-            if ($this->request->hasArgument('@widget_' . $i)) {
-                return $this->request->getArgument('@widget_' . $i);
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Helper to get pagination values
-     *
-     * @param $currentPage
-     * @param bool $mergedResult
-     * @return array
-     */
-    protected function getPaginationValues($currentPage, $mergedResult = false)
-    {
+        $numRows = $this->getItemsPerPage($mergedResult);
         $startRow = 0;
 
-        // Limit items per api request
-        if (!empty($this->settings['flexform']['paginate']['mode']) && ((int)$this->settings['flexform']['paginate']['mode'] > 0)) {
-            // Pagination is active: use page limit
-            $numRows = $this->settings['flexform']['paginate']['itemsPerPage'] ?: $this->settings['paginate']['itemsPerPage'];
-            $startRow = ($this->getCurrentPage($currentPage) ? ($this->getCurrentPage($currentPage) - 1) : 0) * $numRows;
-        } else {
-            // Pagination is inactive: use general limit
-            $numRows = $this->settings['flexform']['maxItems'] ?: $this->settings['maxItems'];
+        if ($this->isPaginationActive()) {
+            $page = max((int)$currentPage, 1);
+            $startRow = ($page - 1) * $this->getItemsPerPage();
         }
-
-        $numRows = $mergedResult ? floor($numRows / 2) : $numRows;
 
         return [$startRow, $numRows];
     }
 
     /**
-     * @param bool $mergedResult
-     * @return float
+     * Items per page if the pagination is active, otherwise the general item limit
      */
-    protected function getItemsPerPage($mergedResult = false)
+    protected function getItemsPerPage(bool $mergedResult = false): int
     {
-        if (!empty($this->settings['flexform']['paginate']['mode']) && ((int)$this->settings['flexform']['paginate']['mode'] > 0)) {
-            // Pagination is active: use page limit
-            $numRows = $this->settings['flexform']['paginate']['itemsPerPage'] ?: $this->settings['paginate']['itemsPerPage'];
+        if ($this->isPaginationActive()) {
+            $numRows = (int)($this->settings['flexform']['paginate']['itemsPerPage'] ?? 0)
+                ?: (int)($this->settings['paginate']['itemsPerPage'] ?? 0);
         } else {
-            // Pagination is inactive: use general limit
-            $numRows = $this->settings['flexform']['maxItems'] ?: $this->settings['maxItems'];
+            $numRows = (int)($this->settings['flexform']['maxItems'] ?? 0)
+                ?: (int)($this->settings['maxItems'] ?? 0);
         }
 
-        return $mergedResult ? floor($numRows / 2) : $numRows;
+        return $mergedResult ? (int)floor($numRows / 2) : $numRows;
     }
 
-    /**
-     * @param $currentPage
-     * @return mixed
-     */
-    protected function getCurrentPage($currentPage)
+    protected function getCurrentPage($currentPage): int
     {
-        $pagination = $this->getWidgetValues();
-
-        if ($pagination) {
-            return $pagination['currentPage'];
-        }
-
-        return $currentPage;
+        return (int)$currentPage;
     }
 
-    /**
-     * @param $numItems
-     * @param $itemsPerPage
-     * @return float
-     */
-    protected function getNumberOfPages($numItems, $itemsPerPage = 0)
+    protected function getNumberOfPages($numItems, $itemsPerPage = 0): int
     {
-        if ($itemsPerPage) {
-            $numRows = $itemsPerPage;
-        } else {
-            if (!empty($this->settings['flexform']['paginate']['mode']) && ((int)$this->settings['flexform']['paginate']['mode'] > 0)) {
-                $numRows = !empty($this->settings['flexform']['paginate']['itemsPerPage']) ? $this->settings['flexform']['paginate']['itemsPerPage'] : $this->settings['paginate']['itemsPerPage'];
-            } else {
-                $numRows = !empty($this->settings['flexform']['maxItems']) ? $this->settings['flexform']['maxItems'] : $this->settings['maxItems'];
-            }
+        $numRows = (int)$itemsPerPage ?: $this->getItemsPerPage();
+        if ($numRows <= 0) {
+            return 1;
         }
-        return floor($numItems / $numRows) + 1;
+        return max(1, (int)ceil((int)$numItems / $numRows));
     }
 
-    /**
-     * @param PageQuery $query
-     * @param $geosearch
-     * @param $latitude
-     * @param $longitude
-     * @param $radius
-     */
-    public function setGeoFilter($query, $geosearch, $latitude, $longitude, $radius)
+    protected function isPaginationActive(): bool
     {
-        if ($geosearch == 1) {
-            $latitude = (float)$latitude;
-            $longitude = (float)$longitude;
-            $radius = (float)$radius;
-
-            if (($latitude != 0) && ($longitude != 0) && ($radius != 0)) {
-                $geoCode = new Geocode($latitude, $longitude, $radius);
-                $query->setGeocode($geoCode);
-            }
-        }
+        return (int)($this->settings['flexform']['paginate']['mode'] ?? 0) > 0;
     }
 
     /**
-     * Set filter in query
-     *
+     * @param InstitutionQuery|PersonQuery|EventQuery $query
+     */
+    public function setGeoFilter($query, $geosearch, $latitude, $longitude, $radius): void
+    {
+        QueryFilter::geo($query, $geosearch, $latitude, $longitude, $radius);
+    }
+
+    /**
      * @param InstitutionQuery $query
-     * @param string $filter
-     * @param string $selectOption
      */
-    public function setInstitutionFilter($query, $filter, $selectOption)
+    public function setInstitutionFilter($query, $filter, $selectOption): void
     {
-        if ($filter) {
-            // Which filter has to be used?
-            switch ($selectOption) {
-                case 'CHILDREN':    // Show children of selected
-                    $resourceArray = GeneralUtility::trimExplode(',', $filter);
-                    $query->setParentInstitutions($resourceArray);
-                    break;
+        QueryFilter::institutions($query, $filter, $selectOption);
+    }
 
-                case 'CHILDREN_RECURSIVE':    // Show all children of selected
-                    $resourceArray = GeneralUtility::trimExplode(',', $filter);
-                    $query->setAncestorInstitutions($resourceArray);
-                    break;
-
-                case 'BOTH':   // Show selected and children
-                    $resourceArray = GeneralUtility::trimExplode(',', $filter);
-                    $query->setParentInstitutionsOrSelf($resourceArray);
-
-                    break;
-
-                case 'BOTH_RECURSIVE':   // Show selected and all children
-                    $resourceArray = GeneralUtility::trimExplode(',', $filter);
-                    $query->setAncestorInstitutionsOrSelf($resourceArray);
-
-                    break;
-
-                default:    // Show selected
-                    $resourceArray = GeneralUtility::trimExplode(',', $filter);
-                    $query->setInstitutions($resourceArray);
-            }
-        }
+    public function setInstitutionTypeFilter($query, $filter): void
+    {
+        QueryFilter::institutionTypes($query, $filter);
     }
 
     /**
-     * @param $query
-     * @param string $filter
-     */
-    public function setInstitutionTypeFilter($query, $filter)
-    {
-        if ($filter) {
-            $resourceArray = GeneralUtility::trimExplode(',', $filter);
-            $query->setInstitutionType($resourceArray);
-        }
-    }
-
-    /**
-     * Set filter in query
-     *
      * @param PersonQuery $query
-     * @param string $filter
      */
-    public function setPersonInstitutionFilter($query, $filter)
+    public function setPersonInstitutionFilter($query, $filter): void
     {
-        if ($filter) {
-            $resourceArray = GeneralUtility::trimExplode(',', $filter);
-            $query->setInstitutions($resourceArray);
-        }
+        QueryFilter::personInstitutions($query, $filter);
+    }
+
+    public function setFunctionTypeFilter($query, $filter): void
+    {
+        QueryFilter::functionTypes($query, $filter);
+    }
+
+    public function setPersonFilter($query, $filter): void
+    {
+        QueryFilter::persons($query, $filter);
+    }
+
+    public function setAvailableFunctionFilter($query, $filter): void
+    {
+        QueryFilter::availableFunctions($query, $filter);
     }
 
     /**
-     * @param $query
-     * @param $filter
+     * Uid of the current page (replaces $GLOBALS['TSFE']->id)
      */
-    public function setFunctionTypeFilter($query, $filter)
+    protected function getCurrentPageId(): int
     {
-        if ($filter) {
-            $resourceArray = GeneralUtility::trimExplode(',', $filter);
-            $query->setFunctions($resourceArray);
+        $pageInformation = $this->request->getAttribute('frontend.page.information');
+        if (is_object($pageInformation) && method_exists($pageInformation, 'getId')) {
+            return (int)$pageInformation->getId();
         }
+        $routing = $this->request->getAttribute('routing');
+        return is_object($routing) && method_exists($routing, 'getPageId') ? (int)$routing->getPageId() : 0;
     }
 
-    /**
-     * @param $query
-     * @param $filter
-     */
-    public function setPersonFilter($query, $filter)
-    {
-        if ($filter) {
-            $resourceArray = GeneralUtility::trimExplode(',', $filter);
-            $query->setPersons($resourceArray);
-        }
-    }
-
-    /**
-     * @param $query
-     * @param $filter
-     */
-    public function setAvailableFunctionFilter($query, $filter)
-    {
-        if ($filter) {
-            $resourceArray = GeneralUtility::trimExplode(',', $filter);
-            $query->setAvailableFunctions($resourceArray);
-        }
-    }
-
-    /**
-     * @param $settings
-     */
-    public function setSettings($settings)
+    public function setSettings(array $settings): void
     {
         $this->settings = $settings;
     }
 
-    /**
-     * @return array
-     * @throws InvalidConfigurationTypeException
-     */
-    protected function getTypoScriptConfiguration()
+    protected function getTypoScriptConfiguration(): array
     {
-        $configurationManager = GeneralUtility::makeInstance(ConfigurationManager::class);
-        $typoScriptService = GeneralUtility::makeInstance(TypoScriptService::class);
-        return $typoScriptService->convertTypoScriptArrayToPlainArray($configurationManager->getConfiguration(ConfigurationManagerInterface::CONFIGURATION_TYPE_FULL_TYPOSCRIPT));
+        $typoScript = $this->configurationManager->getConfiguration(ConfigurationManagerInterface::CONFIGURATION_TYPE_FULL_TYPOSCRIPT);
+        return GeneralUtility::makeInstance(TypoScriptService::class)->convertTypoScriptArrayToPlainArray($typoScript);
     }
 
     /**
-     * @param Result $result
-     * @return array|bool
+     * Result of a list query. If the NAPI rejects the query (HTTP 4xx, e.g. a filter
+     * the endpoint doesn't support), the list is empty instead of an error page and
+     * the page is not cached.
+     *
+     * @param object $repository NDK repository
      */
-    protected function getPagination($result, $currentPage)
+    protected function fetchList(object $repository, PageQuery $query): Result
     {
-        $pageList = [];
-
-        $pages = $this->getNumberOfPages($result->getRecordCount());
-
-        if ($pages > 1) {
-            if ($pages > 10) {
-                $lower = $currentPage - 3;
-                $upper = $currentPage + 3;
-
-                if ($lower < 0) {
-                    $upper = $upper - $lower;
-                    $lower = 1;
-                }
-            } else {
-                $lower = 1;
-                $upper = 99;
+        try {
+            return $repository->get($query);
+        } catch (ClientException $exception) {
+            GeneralUtility::makeInstance(LogManager::class)->getLogger(static::class)->warning(
+                'The NAPI rejected a list query: {message}',
+                ['message' => $exception->getMessage(), 'exception' => $exception]
+            );
+            // Don't keep the empty list in the page cache: the NAPI may only be down for a moment
+            $cacheInstruction = isset($this->request) ? $this->request->getAttribute('frontend.cache.instruction') : null;
+            if ($cacheInstruction instanceof CacheInstruction) {
+                $cacheInstruction->disableCache('EXT:nkc_base: NAPI error in a list query');
             }
-
-            for ($i = 1; $i <= $pages; $i++) {
-                if ((($i >= $lower) && ($i <= $upper)) || (($upper < $pages) && ($i >= $pages - 2)) || (($lower > 2) && ($i <= 2))) {
-                    if (($upper < $pages - 3) && ($i == $pages - 2)) {
-                        $pageList['pages'][] = [
-                            'index' => '...',
-                            'gap' => 1,
-                        ];
-                    }
-                    $pageList['pages'][] = [
-                        'index' => $i,
-                        'current' => ($i == $currentPage) ? 1 : 0,
-                    ];
-                    if (($lower > 3) && ($i == 2)) {
-                        $pageList['pages'][] = [
-                            'index' => '...',
-                            'gap' => 1,
-                        ];
-                    }
-                }
-            }
-
-            if ($currentPage > 1) {
-                $pageList['prev'] = [
-                    'index' => $currentPage - 1,
-                ];
-            }
-
-            if ($currentPage < $pages) {
-                $pageList['next'] = [
-                    'index' => $currentPage + 1,
-                ];
-            }
-
-            return $pageList;
+            return new Result(new \SplObjectStorage(), 0, 0, []);
         }
     }
 
     /**
-     * @param array $config
-     * @param string $type
-     * @param string $extensionKey
-     * @return array
+     * Layout of the list items: plugin (settings.flexform.templateLayout), TypoScript
+     * (settings.templateLayout) or "Default"
+     */
+    protected function getTemplateLayout(): string
+    {
+        $layout = (string)($this->settings['flexform']['templateLayout'] ?? '') ?: (string)($this->settings['templateLayout'] ?? '');
+        $layout = (string)preg_replace('/[^A-Za-z0-9]/', '', $layout);
+        return $layout !== '' ? $layout : 'Default';
+    }
+
+    /**
+     * Partial of the list items for the layout: <base>/<Layout> if it exists, <base> otherwise.
+     * Layouts are added per page TSconfig (Nordkirche\NkcBase\Backend\TemplateLayouts).
+     */
+    protected function getLayoutPartial(string $basePartial): string
+    {
+        $layout = $this->getTemplateLayout();
+        if ($layout === 'Default') {
+            return $basePartial;
+        }
+        $partial = $basePartial . '/' . $layout;
+        try {
+            $renderingContext = method_exists($this->view, 'getRenderingContext') ? $this->view->getRenderingContext() : null;
+            $renderingContext?->getTemplatePaths()->getPartialPathAndFilename($partial);
+            return $partial;
+        } catch (\Throwable) {
+            return $basePartial;
+        }
+    }
+
+    /**
+     * Builds the page list for the NAPI pagination partial
+     *
+     * @param Result $result
+     */
+    protected function getPagination($result, $currentPage): array
+    {
+        $currentPage = max((int)$currentPage, 1);
+        $pages = $this->getNumberOfPages($result->getRecordCount());
+
+        if ($pages <= 1) {
+            return [];
+        }
+
+        if ($pages > 10) {
+            $lower = $currentPage - 3;
+            $upper = $currentPage + 3;
+            if ($lower < 1) {
+                $upper -= $lower;
+                $lower = 1;
+            }
+        } else {
+            $lower = 1;
+            $upper = $pages;
+        }
+
+        $pageList = ['pages' => []];
+        for ($i = 1; $i <= $pages; $i++) {
+            $inWindow = $i >= $lower && $i <= $upper;
+            $isTail = $upper < $pages && $i >= $pages - 2;
+            $isHead = $lower > 2 && $i <= 2;
+            if (!$inWindow && !$isTail && !$isHead) {
+                continue;
+            }
+            if ($upper < $pages - 3 && $i === $pages - 2) {
+                $pageList['pages'][] = ['index' => '...', 'gap' => 1];
+            }
+            $pageList['pages'][] = ['index' => $i, 'current' => $i === $currentPage ? 1 : 0];
+            if ($lower > 3 && $i === 2) {
+                $pageList['pages'][] = ['index' => '...', 'gap' => 1];
+            }
+        }
+
+        if ($currentPage > 1) {
+            $pageList['prev'] = ['index' => $currentPage - 1];
+        }
+        if ($currentPage < $pages) {
+            $pageList['next'] = ['index' => $currentPage + 1];
+        }
+
+        return $pageList;
+    }
+
+    /**
+     * Resolves the template/partial/layout root paths of a view configuration
+     *
+     * @return string[]
      */
     protected function getPath(array $config, string $type, string $extensionKey): array
     {
         $paths = [];
-        if (!empty($config['view'][$type . 'RootPaths']) && is_array($config['view'][$type . 'RootPaths'])) {
-            foreach ($config['view'][$type . 'RootPaths'] as $path) {
-                $paths[] = GeneralUtility::getFileAbsFileName($path);
-            }
+        foreach ((array)($config['view'][$type . 'RootPaths'] ?? []) as $path) {
+            $paths[] = GeneralUtility::getFileAbsFileName($path);
         }
-        if (count($paths) == 0) {
+        if ($paths === []) {
             $paths[] = GeneralUtility::getFileAbsFileName(sprintf('EXT:%s/Resources/Private/%ss/', $extensionKey, ucfirst($type)));
         }
         return $paths;

@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use Nordkirche\NkcBase\Domain\Model\Category;
+
 return [
-    Nordkirche\NkcBase\Domain\Model\Category::class => [
+    Category::class => [
         'tableName' => 'sys_category',
     ],
 ];

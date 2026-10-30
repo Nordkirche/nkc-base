@@ -27,3 +27,18 @@ NDK_NAPI_ACCESS_TOKEN =
 
 # cat=basic/enable; type=string; label=Log NAPI requests into file (set empty to disable logging)
 NDK_LOG_FILE =
+
+# cat=basic/enable; type=int+; label=NAPI request timeout in seconds (default 20)
+NDK_NAPI_TIMEOUT = 20
+
+# cat=status/enable/10; type=int+; label=Status check: response time in milliseconds from which the NAPI counts as slow (default 1500)
+NDK_HEALTH_SLOW_MS = 1500
+
+# cat=status/enable/20; type=string; label=Status check: endpoints, comma separated
+NDK_HEALTH_ENDPOINTS = institutions,people,events,categories
+
+# cat=status/enable/30; type=string; label=Status alert: mail recipients, comma separated (empty = no alerts)
+NDK_HEALTH_ALERT_RECIPIENTS =
+
+# cat=status/enable/40; type=int+; label=Status alert: failed checks in a row before an alert is sent (default 3)
+NDK_HEALTH_ALERT_AFTER = 3

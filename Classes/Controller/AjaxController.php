@@ -1,91 +1,54 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Nordkirche\NkcBase\Controller;
 
-use Nordkirche\Ndk\Domain\Query\AbstractQuery;
-use Nordkirche\Ndk\Domain\Repository\AbstractRepository;
-use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\NkcBase\Service\ApiService;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Log\LoggerInterface;
+use TYPO3\CMS\Backend\Attribute\AsController;
 use TYPO3\CMS\Core\Http\JsonResponse;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
-class AjaxController
+/**
+ * Backend AJAX route "NkcBase::suggest" of the NAPI item selector
+ */
+#[AsController]
+final readonly class AjaxController
 {
-    /**
-     * @param ServerRequestInterface $request
-     * @return JsonResponse
-     * @throws ApiException
-     */
-    public function suggest(ServerRequestInterface $request): JsonResponse
+    private const MAX_ITEMS_PER_OBJECT = 20;
+
+    public function __construct(private LoggerInterface $logger) {}
+
+    public function suggest(ServerRequestInterface $request): ResponseInterface
     {
-        $requestBody = $request->getQueryParams();
+        $params = $request->getQueryParams();
+        $searchQuery = ApiService::buildSearchQuery((string)($params['search'] ?? ''));
+        $allowedObjects = GeneralUtility::trimExplode(',', (string)($params['allowed'] ?? ''), true);
 
-        $responseData = [];
-
-        $search = trim($requestBody['search']);
-
-        $allowedObjects = GeneralUtility::trimExplode(',', $requestBody['allowed']);
+        if ($searchQuery === '' || $allowedObjects === []) {
+            return new JsonResponse(['query' => $searchQuery, 'items' => []]);
+        }
 
         $items = [];
-
-        if ($search && count($allowedObjects)) {
-            $searchQuery = $this->parseSearchString($search);
-
-            foreach ($allowedObjects as $object) {
-                if (trim($object)) {
-                    $repository = ApiService::getRepository($object);
-
-                    $query = ApiService::getQuery($object);
-
-                    $items = array_merge($items, $this->getSuggestions($searchQuery, $repository, $query));
+        foreach ($allowedObjects as $object) {
+            try {
+                foreach (ApiService::search($object, (string)$params['search'], self::MAX_ITEMS_PER_OBJECT) as $item) {
+                    $items[] = [
+                        'id' => $item->getId(),
+                        'name' => (string)$item->getLabel(),
+                        'uri' => (string)$item,
+                        'type' => $object,
+                    ];
                 }
+            } catch (\Throwable $e) {
+                $this->logger->warning('NAPI suggest failed: ' . $e->getMessage(), ['object' => $object]);
+                return new JsonResponse(['query' => $searchQuery, 'items' => [], 'error' => $e->getMessage()], 500);
             }
-
-            $responseData['query'] = $searchQuery;
-
-            $responseData['items'] = $items;
         }
 
-        return new JsonResponse($responseData, 200, ['Content-Type' => 'application/json; charset=utf-8']);
-    }
-
-    /**
-     * @param $search
-     * @return string
-     */
-    private function parseSearchString($search)
-    {
-        $searchWords = GeneralUtility::trimExplode(' ', $search);
-
-        if (count($searchWords) == 1) {
-            return sprintf('*%s*', $searchWords[0]);
-        }
-        return sprintf('*%s*', implode('* *', $searchWords));
-    }
-
-    /**
-     * @param string $search
-     * @param AbstractRepository $repository
-     * @param AbstractQuery $query
-     * @return array
-     */
-    private function getSuggestions($search, $repository, $query)
-    {
-        $query->setQuery($search);
-
-        $collection = $repository->get($query);
-
-        $items = [];
-
-        foreach ($collection as $object) {
-            $items[] = [
-                'id'	=> $object->getId(),
-                'name'	=> htmlspecialchars($object->getLabel()),
-                'uri'	=> (string)$object,
-            ];
-        }
-
-        return $items;
+        return new JsonResponse(['query' => $searchQuery, 'items' => $items]);
     }
 }

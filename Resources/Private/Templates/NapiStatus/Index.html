@@ -1,0 +1,131 @@
+<html
+    xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers"
+    data-namespace-typo3-fluid="true"
+>
+<f:layout name="Module" />
+
+<f:section name="Content">
+    <f:be.pageRenderer
+        includeCssFiles="{0: 'EXT:nkc_base/Resources/Public/Css/napi-status.css'}"
+        includeJavaScriptModules="{0: '@nordkirche/nkc-base/napi-status.js'}"
+    />
+
+    <h1>NAPI-Status</h1>
+
+    <f:if condition="{missingSettings}">
+        <div class="callout callout-warning">
+            <div class="callout-content">
+                <div class="callout-title">Konfiguration unvollständig</div>
+                <div class="callout-body">
+                    Bitte in der Extension-Konfiguration von nkc_base ergänzen:
+                    <f:for each="{missingSettings}" as="setting" iteration="i"><code>{setting}</code><f:if condition="!{i.isLast}">, </f:if></f:for>
+                </div>
+            </div>
+        </div>
+    </f:if>
+
+    <section class="napi-status-section">
+        <div class="napi-status-header">
+            <h2>Live-Check</h2>
+            <button type="button" class="btn btn-primary t3js-napi-check" data-url="{f:be.uri(route: 'ajax_NkcBase::napiHealth')}">
+                Jetzt prüfen
+            </button>
+        </div>
+        <p class="napi-status-hint">
+            Fragt je Endpunkt einen Datensatz direkt bei der NAPI ab, ohne HTTP-Cache.
+            Langsam ab {configuration.slowThreshold} ms. Endpunkte: {configuration.endpoints}
+        </p>
+        <div class="t3js-napi-check-result" aria-live="polite"></div>
+    </section>
+
+    <section class="napi-status-section">
+        <h2>Echter Traffic</h2>
+        <f:if condition="{trafficSupported}">
+            <f:then>
+                <div class="napi-status-grid">
+                    <f:render section="Traffic" arguments="{title: 'Letzte Stunde', stats: traffic.hour}" />
+                    <f:render section="Traffic" arguments="{title: 'Letzte 24 Stunden', stats: traffic.day}" />
+                </div>
+            </f:then>
+            <f:else>
+                <div class="callout callout-info">
+                    <div class="callout-content">
+                        <div class="callout-body">Die installierte NDK-Version unterstützt keine eigene Middleware (<code>Configuration::addMiddleware()</code>). Bitte auf NDK 3.0 aktualisieren.</div>
+                    </div>
+                </div>
+            </f:else>
+        </f:if>
+    </section>
+
+    <section class="napi-status-section">
+        <h2>Automatische Prüfung</h2>
+        <f:if condition="{lastReport}">
+            <f:then>
+                <p>
+                    Letzte Prüfung: <f:format.date format="d.m.Y H:i:s">{lastReport.checkedAt}</f:format.date>,
+                    Status <span class="badge badge-{lastReport.state}">{lastReport.status}</span>,
+                    ⌀ <f:format.number decimals="0">{lastReport.averageMs}</f:format.number> ms
+                    <f:if condition="{failuresInRow}"> · {failuresInRow} Fehlschläge in Folge</f:if>
+                    <f:if condition="{alertOpen}"> · Alarm ist offen</f:if>
+                </p>
+            </f:then>
+            <f:else>
+                <p>Noch keine automatische Prüfung. Richten Sie im Scheduler den Command <code>nkc_base:napi_check</code> ein, z. B. alle 5 Minuten.</p>
+            </f:else>
+        </f:if>
+        <p>
+            Alarm-Mails:
+            <f:if condition="{configuration.alertRecipients}">
+                <f:then>an {configuration.alertRecipients} nach {configuration.alertAfter} Fehlschlägen in Folge</f:then>
+                <f:else>nicht konfiguriert (<code>NDK_HEALTH_ALERT_RECIPIENTS</code>)</f:else>
+            </f:if>
+        </p>
+    </section>
+
+    <section class="napi-status-section">
+        <h2>Konfiguration</h2>
+        <table class="table table-striped table-fit napi-status-config">
+            <tbody>
+                <tr><th>API</th><td>{configuration.baseUri}</td></tr>
+                <tr><th>Benutzer-ID</th><td>{configuration.userId}</td></tr>
+                <tr><th>Access-Token</th><td><f:if condition="{configuration.tokenSet}" then="gesetzt" else="fehlt" /></td></tr>
+                <tr><th>Timeout</th><td>{configuration.timeout} s</td></tr>
+            </tbody>
+        </table>
+    </section>
+</f:section>
+
+<f:section name="Traffic">
+    <div class="card napi-status-card">
+        <div class="card-body">
+            <h3>{title}</h3>
+            <f:if condition="{stats.count}">
+                <f:then>
+                    <dl class="napi-status-kpis">
+                        <div><dt>Requests</dt><dd>{stats.count}</dd></div>
+                        <div><dt>⌀ Dauer</dt><dd><f:format.number decimals="0">{stats.avgMs}</f:format.number> ms</dd></div>
+                        <div><dt>Max.</dt><dd><f:format.number decimals="0">{stats.maxMs}</f:format.number> ms</dd></div>
+                        <div><dt>Fehler</dt><dd><f:format.number decimals="1">{stats.errorRate * 100}</f:format.number> %</dd></div>
+                        <div><dt>Aus Cache</dt><dd><f:format.number decimals="0">{stats.cacheRate * 100}</f:format.number> %</dd></div>
+                    </dl>
+                    <table class="table table-striped napi-status-endpoints">
+                        <thead><tr><th>Endpunkt</th><th>Requests</th><th>⌀</th><th>Max.</th><th>Fehler</th></tr></thead>
+                        <tbody>
+                            <f:for each="{stats.endpoints}" as="endpoint" key="name">
+                                <tr>
+                                    <td><code>{name}</code></td>
+                                    <td>{endpoint.count}</td>
+                                    <td><f:format.number decimals="0">{endpoint.avgMs}</f:format.number> ms</td>
+                                    <td><f:format.number decimals="0">{endpoint.maxMs}</f:format.number> ms</td>
+                                    <td>{endpoint.errors}</td>
+                                </tr>
+                            </f:for>
+                        </tbody>
+                    </table>
+                </f:then>
+                <f:else><p>Keine NAPI-Requests in diesem Zeitraum.</p></f:else>
+            </f:if>
+        </div>
+    </div>
+</f:section>
+</html>

@@ -1,40 +1,58 @@
-$(document).ready(function() {
-    
-    $('body').on('click', '.ajax-list-wrapper .ajax-list__next-page', function(e) {
+/**
+ * "Load more" pagination of the NAPI list views (no dependencies)
+ */
+(function () {
+  'use strict';
 
-        var button = $(this);
-        var spinner = button.find('.load-more');
-        var requestUri = button.data('request-uri');
+  document.addEventListener('click', function (event) {
+    var button = event.target.closest('.ajax-list-wrapper .ajax-list__next-page');
+    if (!button) {
+      return;
+    }
+    event.preventDefault();
 
-        if (!spinner.hasClass('load-more--loading')) {
-            spinner.addClass('load-more--loading');
-            if (requestUri.length) {
-                $.get(requestUri, function(result) {
-                    spinner.removeClass('load-more--loading');
-                    if (result.length) {
-                        var elements = $(result).find('.ajax-list > *').hide();
-                        if (elements.length) {
-                            var nextPage = $(result).find('.ajax-list__next-page');
-                            if (nextPage.length) {
-                                button.data('request-uri', nextPage.data('request-uri'));
-                            } else {
-                                button.fadeOut();
-                            }
-                            $('.ajax-list').append(elements);
+    var spinner = button.querySelector('.load-more');
+    var requestUri = button.dataset.requestUri || '';
+    if (requestUri === '' || (spinner && spinner.classList.contains('load-more--loading'))) {
+      return;
+    }
 
-                            if(window.nordkirche && window.nordkirche.lazyload) {
-                                window.nordkirche.lazyload.update();
-                            }
+    spinner && spinner.classList.add('load-more--loading');
 
-                            elements.fadeIn();
-                        } else {
-                            button.fadeOut();
-                        }
-                    }
-                });
-            }
+    fetch(requestUri, { credentials: 'same-origin' })
+      .then(function (response) {
+        return response.ok ? response.text() : '';
+      })
+      .then(function (html) {
+        var result = new DOMParser().parseFromString(html, 'text/html');
+        var elements = result.querySelectorAll('.ajax-list > *');
+        var list = document.querySelector('.ajax-list');
+
+        if (elements.length === 0 || !list) {
+          button.hidden = true;
+          return;
         }
 
-    });
+        var nextPage = result.querySelector('.ajax-list__next-page');
+        if (nextPage && nextPage.dataset.requestUri) {
+          button.dataset.requestUri = nextPage.dataset.requestUri;
+        } else {
+          button.hidden = true;
+        }
 
-});
+        elements.forEach(function (element) {
+          list.appendChild(document.importNode(element, true));
+        });
+
+        if (window.nordkirche && window.nordkirche.lazyload) {
+          window.nordkirche.lazyload.update();
+        }
+      })
+      .catch(function () {
+        button.hidden = true;
+      })
+      .finally(function () {
+        spinner && spinner.classList.remove('load-more--loading');
+      });
+  });
+})();

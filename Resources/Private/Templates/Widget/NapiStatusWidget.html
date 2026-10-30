@@ -1,0 +1,39 @@
+<html xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers" data-namespace-typo3-fluid="true">
+<f:layout name="Widget/Widget"/>
+<f:section name="main">
+    <f:if condition="{report}">
+        <f:then>
+            <div class="napi-status-overall">
+                <span class="napi-status-dot" data-state="{report.state}"></span>
+                <strong>
+                    <f:switch expression="{report.status}">
+                        <f:case value="ok">In Ordnung</f:case>
+                        <f:case value="slow">Langsam</f:case>
+                        <f:case value="auth">Zugang ungültig</f:case>
+                        <f:case value="config">Konfiguration unvollständig</f:case>
+                        <f:defaultCase>Nicht erreichbar</f:defaultCase>
+                    </f:switch>
+                </strong>
+            </div>
+            <p>
+                Letzte Prüfung: <f:format.date format="d.m.Y H:i">{report.checkedAt}</f:format.date><br />
+                ⌀ <f:format.number decimals="0">{report.averageMs}</f:format.number> ms,
+                max. <f:format.number decimals="0">{report.maxMs}</f:format.number> ms
+            </p>
+        </f:then>
+        <f:else>
+            <p>Noch keine automatische Prüfung. Bitte den Command <code>nkc_base:napi_check</code> im Scheduler einrichten.</p>
+        </f:else>
+    </f:if>
+    <dl class="napi-status-kpis">
+        <div><dt>Requests (1 h)</dt><dd>{traffic.count}</dd></div>
+        <div><dt>⌀ Dauer</dt><dd><f:format.number decimals="0">{traffic.avgMs}</f:format.number> ms</dd></div>
+        <div><dt>Fehler</dt><dd><f:format.number decimals="1">{traffic.errorRate * 100}</f:format.number> %</dd></div>
+    </dl>
+</f:section>
+<f:section name="footer">
+    <f:if condition="{moduleUri}">
+        <a href="{moduleUri}" class="btn btn-default">NAPI-Status öffnen</a>
+    </f:if>
+</f:section>
+</html>

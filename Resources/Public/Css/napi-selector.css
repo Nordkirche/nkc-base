@@ -1,0 +1,48 @@
+/* Suggest search of the NAPI item selector (no dependency on Bootstrap dropdowns) */
+.napi-suggest {
+  position: relative;
+}
+
+.napi-suggest-results {
+  display: none;
+  position: absolute;
+  z-index: 1000;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 2px;
+  padding: 4px 0;
+  background: var(--typo3-component-bg, #fff);
+  color: var(--typo3-component-color, inherit);
+  border: 1px solid var(--typo3-component-border-color, #ccc);
+  border-radius: var(--typo3-component-border-radius, 4px);
+  box-shadow: var(--typo3-component-box-shadow, 0 2px 6px rgba(0, 0, 0, .15));
+}
+
+.napi-suggest-results.is-open {
+  display: block;
+}
+
+.napi-suggest-item {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.napi-suggest-item:hover,
+.napi-suggest-item:focus {
+  background: var(--typo3-component-hover-bg, rgba(0, 0, 0, .06));
+  outline: none;
+}
+
+.napi-suggest-item small {
+  margin-left: .5em;
+  opacity: .7;
+}

@@ -2,36 +2,83 @@
     "name": "nordkirche/nkc-base",
     "type": "typo3-cms-extension",
     "description": "Nordkirche NAPI Client Base Library",
-    "license": "GPL-2.0",
-    "author": [
+    "license": "GPL-2.0-or-later",
+    "authors": [
         {
             "name": "netzleuchten GmbH",
             "role": "Developer"
         }
     ],
     "require": {
-        "typo3/cms-core": "^12.4",
-        "nordkirche/ndk": "^2.0"
+        "php": "^8.2",
+        "nordkirche/ndk": "dev-feature/v3.0-develop",
+        "typo3/cms-backend": "^13.4 || ^14.3",
+        "typo3/cms-core": "^13.4 || ^14.3",
+        "typo3/cms-extbase": "^13.4 || ^14.3",
+        "typo3/cms-fluid": "^13.4 || ^14.3",
+        "typo3/cms-frontend": "^13.4 || ^14.3"
     },
-    "config": {
-        "bin-dir": ".build/bin",
-        "discard-changes": true,
-        "optimize-autoloader": true,
-        "vendor-dir": ".build/vendor"
+    "require-dev": {
+        "a9f/typo3-fractor": "^0.5 || ^1.1",
+        "saschaegerer/phpstan-typo3": "^2.1 || ^3.1",
+        "ssch/typo3-rector": "^3.0",
+        "typo3/cms-dashboard": "^13.4 || ^14.3",
+        "typo3/coding-standards": "^0.8",
+        "typo3/testing-framework": "^9.2"
+    },
+    "suggest": {
+        "typo3/cms-scheduler": "Run the NAPI category sync and the map cache warm-up periodically",
+        "typo3/cms-dashboard": "Dashboard widget \"NAPI-Status\""
     },
     "autoload": {
         "psr-4": {
             "Nordkirche\\NkcBase\\": "Classes"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Nordkirche\\NkcBase\\Tests\\": "Tests/"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "a9f/fractor-extension-installer": true,
+            "phpstan/extension-installer": true,
+            "typo3/class-alias-loader": true,
+            "typo3/cms-composer-installers": true
+        },
+        "bin-dir": ".build/bin",
+        "optimize-autoloader": true,
+        "sort-packages": true,
+        "vendor-dir": ".build/vendor"
+    },
     "extra": {
         "typo3/cms": {
             "extension-key": "nkc_base",
-            "app-dir": ".build",
+            "version": "13.0.0",
+            "Package": {
+                "providesPackages": {
+                    "nordkirche/ndk": ""
+                }
+            },
             "web-dir": ".build/public"
+        },
+        "branch-alias": {
+            "dev-master": "13.x-dev",
+            "dev-develop": "13.x-dev"
         }
     },
-    "require-dev": {
-        "typo3/coding-standards": "^0.7.1"
+    "scripts": {
+        "cs:check": "php-cs-fixer fix --dry-run --diff",
+        "cs:fix": "php-cs-fixer fix",
+        "fractor": "fractor process",
+        "phpstan": "phpstan analyse",
+        "rector": "rector process",
+        "test:unit": "phpunit -c Build/phpunit/UnitTests.xml",
+        "test:functional": "phpunit -c Build/phpunit/FunctionalTests.xml",
+        "test": [
+            "@test:unit",
+            "@test:functional"
+        ]
     }
 }

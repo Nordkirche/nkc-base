@@ -1,81 +1,55 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Nordkirche\NkcBase\Domain\Repository;
 
-use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\NkcBase\Service\ApiService;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class GenericRepository implements GenericRepositoryInterface
 {
-    /**
-     * @param string $object
-     * @param string $id
-     * @param array $routeFieldResultNames
-     * @param string $routeFieldResult
-     * @return string
-     * @throws ApiException
-     */
-    public static function getRouteFieldResult($object, $id, $routeFieldResultNames, $routeFieldResult): string
+    public static function getRouteFieldResult(string $object, string $id, array $routeFieldResultNames, string $routeFieldResult): string
     {
-        $className = sprintf('Nordkirche\Ndk\Domain\Repository\%sRepository', ucfirst($object));
-        $api = ApiService::get();
-        $repository = $api->factory($className);
-
         try {
-            $item = $repository->getById($id);
-        } catch (\Exception $e) {
-            $item = false;
+            $item = ApiService::getRepository($object)->getById((int)$id);
+        } catch (\Throwable) {
+            $item = null;
         }
 
-        if ($item) {
-            if (count($routeFieldResultNames)) {
-                $result = self::createRouteResult($item, $routeFieldResultNames, $routeFieldResult);
-                return ($result) ? $result : (string)$item->getLabel();
-            }
-            return (string)$item->getLabel();
+        if (!is_object($item)) {
+            return $id;
         }
-        return (string)$id;
+
+        if ($routeFieldResultNames !== []) {
+            $result = self::createRouteResult($item, $routeFieldResultNames, $routeFieldResult);
+            if ($result !== null && $result !== '') {
+                return $result;
+            }
+        }
+        return method_exists($item, 'getLabel') ? (string)$item->getLabel() : $id;
     }
 
     /**
-     * @param $result
-     * @param array $routeFieldResultNames
-     * @param string $routeFieldResult
-     * @return string|null
+     * Replaces placeholders like {title} or {address.city} with the values of the object.
+     * Returns null if a placeholder can't be resolved.
      */
-    protected static function createRouteResult($result, $routeFieldResultNames, $routeFieldResult): ?string
+    protected static function createRouteResult(object $item, array $routeFieldResultNames, string $routeFieldResult): ?string
     {
-        if ($result === null) {
-            return $result;
-        }
-        // Backup object
-        $object = $result;
-
         $substitutes = [];
         foreach ($routeFieldResultNames as $fieldName) {
-            // Restore object
-            $result = $object;
-
-            $getterName = sprintf('get%s', ucfirst($fieldName));
-            if (!method_exists($result, $getterName)) {
-                if (str_contains($fieldName, '.')) {
-                    $fieldNames = GeneralUtility::trimExplode('.', $fieldName);
-                    $objectGetterName = sprintf('get%s', ucfirst($fieldNames[0]));
-                    $getterName =   sprintf('get%s', ucfirst($fieldNames[1]));
-                }
-                if (!method_exists($result, $objectGetterName)) {
+            $value = $item;
+            foreach (explode('.', $fieldName) as $propertyName) {
+                $getterName = 'get' . ucfirst(trim($propertyName));
+                if (!is_object($value) || !method_exists($value, $getterName)) {
                     return null;
                 }
-                $result = $result->$objectGetterName();
+                $value = $value->$getterName();
             }
-            $routeFieldName = '{' . $fieldName . '}';
-            $substitutes[$routeFieldName] = $result->$getterName();
+            if (!is_scalar($value) && !$value instanceof \Stringable) {
+                return null;
+            }
+            $substitutes['{' . $fieldName . '}'] = (string)$value;
         }
-        return str_replace(
-            array_keys($substitutes),
-            array_values($substitutes),
-            $routeFieldResult
-        );
+        return strtr($routeFieldResult, $substitutes);
     }
 }

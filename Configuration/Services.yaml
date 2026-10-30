@@ -3,17 +3,34 @@ services:
     autowire: true
     autoconfigure: true
     public: false
+
   Nordkirche\NkcBase\:
     resource: '../Classes/*'
-  Nordkirche\NkcBase\Command\MapCacheCommandController:
+    exclude:
+      - '../Classes/Domain/Model/*'
+      - '../Classes/Exception/*'
+      # Registered in Services.php, only if EXT:dashboard is installed
+      - '../Classes/Dashboard/*'
+
+  # Used by the static ApiService facade via GeneralUtility::makeInstance()
+  Nordkirche\NkcBase\Service\NdkApiFactory:
     public: true
-    tags:
-      - name: 'console.command'
-        command: 'nkc_base:map_cache'
-        schedulable: true
-  Nordkirche\NkcBase\Command\NapiSyncCommandController:
+
+  Nordkirche\NkcBase\MapCache\MapMarkerCache:
     public: true
-    tags:
-      - name: 'console.command'
-        command: 'nkc_base:napi_sync'
-        schedulable: true
+    arguments:
+      $cache: '@cache.nkcbase_mapmarkers'
+      $providers: !tagged_iterator nkc_base.map_marker_provider
+
+  cache.nkcbase_mapmarkers:
+    class: TYPO3\CMS\Core\Cache\Frontend\FrontendInterface
+    factory: ['@TYPO3\CMS\Core\Cache\CacheManager', 'getCache']
+    arguments: ['nkcbase_mapmarkers']
+
+  # Fetched by the core PageTitleProviderManager from the container
+  Nordkirche\NkcBase\Provider\TitleProvider:
+    public: true
+
+  # Response times of the real NAPI requests (sys_registry), see NapiStatusController
+  Nordkirche\NkcBase\Napi\Traffic\TrafficStats:
+    public: true

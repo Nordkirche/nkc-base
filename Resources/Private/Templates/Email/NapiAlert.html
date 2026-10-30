@@ -1,0 +1,27 @@
+<f:layout name="SystemEmail" />
+
+<f:section name="Title">{headline}</f:section>
+
+<f:section name="Main">
+    <h4>{headline}</h4>
+    <f:if condition="{type} == 'alert'">
+        <f:then>
+            <p>Die Nordkirche API (NAPI) ist seit {failuresInRow} Prüfungen nicht in Ordnung. Status: <strong>{reportData.status}</strong></p>
+        </f:then>
+        <f:else>
+            <p>Die Nordkirche API (NAPI) antwortet wieder normal.</p>
+        </f:else>
+    </f:if>
+    <p>Geprüft: <f:format.date format="d.m.Y H:i:s">{reportData.checkedAt}</f:format.date><br />API: {reportData.baseUri}</p>
+    <f:if condition="{reportData.missingSettings}">
+        <p>Fehlende Konfiguration: <f:for each="{reportData.missingSettings}" as="setting" iteration="i">{setting}<f:if condition="!{i.isLast}">, </f:if></f:for></p>
+    </f:if>
+    <f:if condition="{reportData.results}">
+        <table cellpadding="4" style="border-collapse: collapse;">
+            <tr><th align="left">Endpunkt</th><th align="left">Status</th><th align="right">HTTP</th><th align="right">Zeit</th><th align="left">Fehler</th></tr>
+            <f:for each="{reportData.results}" as="result">
+                <tr><td>{result.endpoint}</td><td>{result.status}</td><td align="right">{result.httpStatus}</td><td align="right">{result.totalMs} ms</td><td>{result.error}</td></tr>
+            </f:for>
+        </table>
+    </f:if>
+</f:section>

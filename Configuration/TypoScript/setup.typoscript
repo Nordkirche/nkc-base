@@ -2,37 +2,37 @@
 # FE-Plugin configuration for EXT:nkc_base
 # ==============================================
 plugin.tx_nkcbase {
-    view {
-        templateRootPaths.0 = EXT:nkc_base/Resources/Private/Templates/
-        partialRootPaths.0 = EXT:nkc_base/Resources/Private/Partials/
-        layoutRootPaths.0 = EXT:nkc_base/Resources/Private/Layouts/
-    }
+  view {
+    templateRootPaths.0 = EXT:nkc_base/Resources/Private/Templates/
+    partialRootPaths.0 = EXT:nkc_base/Resources/Private/Partials/
+    layoutRootPaths.0 = EXT:nkc_base/Resources/Private/Layouts/
+  }
 
-    settings {
-        paginate {
-            itemsPerPage = 20
-            insertAbove = 1
-            insertBelow = 1
-            templatePath =
-            prevNextHeaderTags = 1
-            maximumNumberOfLinks = 3
-        }
+  settings {
+    paginate {
+      itemsPerPage = {$nkcBase.paginate.itemsPerPage}
+      insertAbove = 1
+      insertBelow = 1
+      templatePath =
+      prevNextHeaderTags = 1
+      maximumNumberOfLinks = {$nkcBase.paginate.maximumNumberOfLinks}
     }
+  }
 }
 
 config.pageTitleProviders {
-    nkcBase {
-        provider = Nordkirche\NkcBase\Provider\TitleProvider
-        before = altPageTitle,record,seo,news
-    }
+  nkcBase {
+    provider = Nordkirche\NkcBase\Provider\TitleProvider
+    before = record,seo,news
+  }
 }
 
 lib.contentElement {
-    layoutRootPaths.10 = EXT:nkc_base/Resources/Private/Extensions/fluid_styled_content/Layouts/
+  layoutRootPaths.10 = EXT:nkc_base/Resources/Private/Extensions/fluid_styled_content/Layouts/
 }
 
 page {
-    includeJSFooter {
-        ajaxPagination = EXT:nkc_base/Resources/Public/JavaScript/ajaxPagination.js
-    }
+  includeJSFooter {
+    ajaxPagination = EXT:nkc_base/Resources/Public/JavaScript/ajaxPagination.js
+  }
 }

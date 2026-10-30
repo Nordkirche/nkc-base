@@ -1,156 +1,66 @@
 <?php
 
-/*
- * This file is part of the TYPO3 CMS project.
- *
- * It is free software; you can redistribute it and/or modify it under
- * the terms of the GNU General Public License, either version 2
- * of the License, or any later version.
- *
- * For the full copyright and license information, please read the
- * LICENSE.txt file that was distributed with this source code.
- *
- * The TYPO3 project - inspiring people to share!
- */
+declare(strict_types=1);
 
 namespace Nordkirche\NkcBase\CustomField;
 
 use Nordkirche\Ndk\Service\NapiService;
-use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\NkcBase\Service\ApiService;
 use TYPO3\CMS\Backend\Form\Element\AbstractFormElement;
 use TYPO3\CMS\Backend\Routing\UriBuilder;
-use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
-use TYPO3\CMS\Core\Imaging\Icon;
+use TYPO3\CMS\Core\Crypto\HashService;
 use TYPO3\CMS\Core\Imaging\IconFactory;
-use TYPO3\CMS\Core\Localization\LanguageService;
+use TYPO3\CMS\Core\Imaging\IconSize;
+use TYPO3\CMS\Core\Information\Typo3Version;
 use TYPO3\CMS\Core\Page\JavaScriptModuleInstruction;
-use TYPO3\CMS\Core\Page\PageRenderer;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\MathUtility;
 use TYPO3\CMS\Core\Utility\StringUtility;
 
 /**
- * Generation of elements of the type "group"
+ * FormEngine element "napiItemSelector": selects NAPI objects (persons, institutions, ...)
+ * by their resource URI. Works like the core "group" element, with a NAPI suggest
+ * search and a search wizard.
+ *
+ * TCA / flexform configuration:
+ *   'config' => [
+ *       'type' => 'user',
+ *       'renderType' => 'napiItemSelector',
+ *       'allowed' => 'institution,person',
+ *       'maxitems' => 10,
+ *       'size' => 5,
+ *   ]
  */
 class Selector extends AbstractFormElement
 {
-    /**
-     * Default field information enabled for this element.
-     *
-     * @var array
-     */
-    protected $defaultFieldInformation = [
-        'tcaDescription' => [
-            'renderType' => 'tcaDescription',
-        ],
-    ];
+    public const HMAC_SECRET = 'wizard_napi';
 
-    /**
-     * Default field controls for this element.
-     *
-     * @var array
-     */
-    protected $defaultFieldControl = [
-        'elementBrowser' => [
-            'renderType' => 'elementBrowser',
-        ],
-        'insertClipboard' => [
-            'renderType' => 'insertClipboard',
-            'after' => [ 'elementBrowser' ],
-        ],
-        'editPopup' => [
-            'renderType' => 'editPopup',
-            'disabled' => true,
-            'after' => [ 'insertClipboard' ],
-        ],
-        'addRecord' => [
-            'renderType' => 'addRecord',
-            'disabled' => true,
-            'after' => [ 'editPopup' ],
-        ],
-        'listModule' => [
-            'renderType' => 'listModule',
-            'disabled' => true,
-            'after' => [ 'addRecord' ],
-        ],
-    ];
+    public function __construct(
+        private readonly IconFactory $iconFactory,
+        private readonly UriBuilder $uriBuilder,
+        private readonly HashService $hashService,
+    ) {
+        // TYPO3 14.2+ renders field descriptions next to the label
+        if ((new Typo3Version())->getMajorVersion() < 14) {
+            $this->defaultFieldInformation = ['tcaDescription' => ['renderType' => 'tcaDescription']];
+        }
+    }
 
-    /**
-     * Default field wizards for this element
-     *
-     * @var array
-     */
-    protected $defaultFieldWizard = [
-        'tableList' => [
-            'renderType' => 'tableList',
-        ],
-        'recordsOverview' => [
-            'renderType' => 'recordsOverview',
-            'after' => [ 'tableList' ],
-        ],
-        'localizationStateSelector' => [
-            'renderType' => 'localizationStateSelector',
-            'after' => [ 'recordsOverview' ],
-        ],
-        'otherLanguageContent' => [
-            'renderType' => 'otherLanguageContent',
-            'after' => [ 'localizationStateSelector' ],
-        ],
-        'defaultLanguageDifferences' => [
-            'renderType' => 'defaultLanguageDifferences',
-            'after' => [ 'otherLanguageContent' ],
-        ],
-    ];
-
-    /**
-     * This will render a selector box into which elements from either
-     * the file system or database can be inserted. Relations.
-     *
-     * @return array As defined in initializeResultArray() of AbstractNode
-     * @throws \RuntimeException
-     * @throws ApiException
-     */
-    public function render()
+    public function render(): array
     {
-        $pageRenderer = GeneralUtility::makeInstance(PageRenderer::class);
-        $pageRenderer->loadRequireJsModule('TYPO3/CMS/NkcBase/backend');
-
-        $iconFactory = GeneralUtility::makeInstance(IconFactory::class);
-
         $languageService = $this->getLanguageService();
-        $backendUser = $this->getBackendUserAuthentication();
         $resultArray = $this->initializeResultArray();
 
-        $table = $this->data['tableName'];
-        $fieldName = $this->data['fieldName'];
         $row = $this->data['databaseRow'];
         $parameterArray = $this->data['parameterArray'];
         $config = $parameterArray['fieldConf']['config'];
         $elementName = $parameterArray['itemFormElName'];
 
-        if (isset($config['arguments'])) {
-            // Flux fallback
-            $config = $config['arguments'];
-        }
+        $allowed = (string)($config['allowed'] ?? '');
+        $maxItems = (int)($config['maxitems'] ?? 0);
+        $isMultiple = $maxItems !== 1;
 
-        $config['type'] = empty($config['type']) ? '' : $config['type'];
-
-        $fieldId = StringUtility::getUniqueId('tceforms-multiselect-');
-        $md5OfElName = str_replace('tceforms-multiselect-', '', $fieldId);
-
-        $allowed = $config['allowed'];
-        $selectedItems = $this->getObjects(GeneralUtility::trimExplode(',', $parameterArray['itemFormElValue']));
-
-        // $selectedItemsCount = count($selectedItems);
-
-        $hmac = GeneralUtility::hmac('wizard_napi', $allowed);
-
-        $uriBuilder = GeneralUtility::makeInstance(UriBuilder::class);
-        $wizardUrl = $uriBuilder->buildUriFromRoute('wizard_napi', ['P' => ['field' => $md5OfElName, 'hmac' => $hmac, 'allowed' => $allowed]]);
-        $wizardButton = $this->renderWizardButton($wizardUrl, $hmac, $iconFactory);
-
-        $maxItems = isset($config['maxitems']) ?: '';
+        $selectedItems = $this->getObjects(GeneralUtility::trimExplode(',', (string)$parameterArray['itemFormElValue'], true));
 
         $size = (int)($config['size'] ?? 5);
         $autoSizeMax = (int)($config['autoSizeMax'] ?? 0);
@@ -159,275 +69,183 @@ class Selector extends AbstractFormElement
             $size = MathUtility::forceIntegerInRange(count($selectedItems) + 1, $size, $autoSizeMax);
         }
 
-        $internalType = 'db';
-        $maxTitleLength = $backendUser->uc['titleLen'];
+        $fieldId = StringUtility::getUniqueId('tceforms-multiselect-');
 
         $listOfSelectedValues = [];
         $selectorOptionsHtml = [];
         foreach ($selectedItems as $selectedItem) {
-            $tableWithUid = (string)$selectedItem;
-            $listOfSelectedValues[] = $tableWithUid;
-            $title = $selectedItem->getLabel();
-            if (empty($title)) {
+            $uri = (string)$selectedItem;
+            $listOfSelectedValues[] = $uri;
+            $title = (string)$selectedItem->getLabel();
+            if ($title === '') {
                 $title = '[' . $languageService->sL('LLL:EXT:core/Resources/Private/Language/locallang_core.xlf:labels.no_title') . ']';
             }
-            $shortenedTitle = GeneralUtility::fixed_lgd_cs($title, $maxTitleLength);
-            $selectorOptionsHtml[] =
-                '<option value="' . htmlspecialchars($tableWithUid) . '" title="' . htmlspecialchars($title) . '">'
-                    . htmlspecialchars($this->appendValueToLabelInDebugMode($shortenedTitle, $tableWithUid))
+            $selectorOptionsHtml[] = '<option value="' . htmlspecialchars($uri) . '" title="' . htmlspecialchars($title) . '">'
+                . htmlspecialchars($this->appendValueToLabelInDebugMode(GeneralUtility::fixed_lgd_cs($title, (int)($this->getBackendUser()->uc['titleLen'] ?? 50)), $uri))
                 . '</option>';
         }
 
         $fieldInformationResult = $this->renderFieldInformation();
-        $fieldInformationHtml = $fieldInformationResult['html'];
         $resultArray = $this->mergeChildReturnIntoExistingResult($resultArray, $fieldInformationResult, false);
 
-        if (isset($config['readOnly']) && $config['readOnly']) {
-            // Return early if element is read only
-            $html = [];
-            $html[] = '<div class="formengine-field-item t3js-formengine-field-item">';
-            $html[] =   $fieldInformationHtml;
-            $html[] =   '<div class="form-wizards-wrap napi-object-selector">';
-            $html[] =       '<div class="form-wizards-element">';
-            $html[] =           '<select';
-            $html[] =           ' id="tceforms-multiselect-' . $md5OfElName . '"';
-            $html[] =               ' size="' . $size . '"';
-            $html[] =               ' disabled="disabled"';
-            $html[] =               ' class="form-control tceforms-multiselect"';
-            $html[] =               ($maxItems !== 1 && $size !== 1) ? ' multiple="multiple"' : '';
-            $html[] =           '>';
-            $html[] =               implode(LF, $selectorOptionsHtml);
-            $html[] =           '</select>';
-            $html[] =       '</div>';
-            $html[] =       '<div class="form-wizards-items-aside">';
-            $html[] =       '</div>';
-            $html[] =   '</div>';
-            $html[] = '</div>';
-            $resultArray['html'] = implode(LF, $html);
+        $selectHtml = static fn(array $attributes): string => '<select ' . GeneralUtility::implodeAttributes($attributes, true) . '>'
+            . implode("\n", $selectorOptionsHtml)
+            . '</select>';
+
+        if (!empty($config['readOnly'])) {
+            $attributes = ['id' => $fieldId, 'size' => (string)$size, 'disabled' => 'disabled', 'class' => 'form-select'];
+            if ($isMultiple && $size !== 1) {
+                $attributes['multiple'] = 'multiple';
+            }
+            $resultArray['html'] = implode("\n", [
+                $this->renderLabel($fieldId),
+                '<div class="formengine-field-item t3js-formengine-field-item">',
+                $fieldInformationResult['html'],
+                '<div class="form-wizards-wrap">',
+                '<div class="form-wizards-element form-wizards-item-element">' . $selectHtml($attributes) . '</div>',
+                '</div>',
+                '</div>',
+            ]);
             return $resultArray;
-        }
-
-        // Need some information if in flex form scope for the suggest element
-        $dataStructureIdentifier = '';
-        $flexFormSheetName = '';
-        $flexFormFieldName = '';
-        $flexFormContainerName = '';
-        $flexFormContainerFieldName = '';
-        if ($this->data['processedTca']['columns'][$fieldName]['config']['type'] === 'flex') {
-            $flexFormConfig = $this->data['processedTca']['columns'][$fieldName];
-            $dataStructureIdentifier = $flexFormConfig['config']['dataStructureIdentifier'];
-            if (!isset($flexFormConfig['config']['dataStructureIdentifier'])) {
-                throw new \RuntimeException(
-                    'A data structure identifier must be set in [\'config\'] part of a flex form.'
-                    . ' This is usually added by TcaFlexPrepare data processor',
-                    1485206970
-                );
-            }
-            if (isset($this->data['flexFormSheetName'])) {
-                $flexFormSheetName = $this->data['flexFormSheetName'];
-            }
-            if (isset($this->data['flexFormFieldName'])) {
-                $flexFormFieldName = $this->data['flexFormFieldName'];
-            }
-            if (isset($this->data['flexFormContainerName'])) {
-                $flexFormContainerName = $this->data['flexFormContainerName'];
-            }
-            if (isset($this->data['flexFormContainerFieldName'])) {
-                $flexFormContainerFieldName = $this->data['flexFormContainerFieldName'];
-            }
-        }
-        // Get minimum characters for suggest from TCA and override by TsConfig
-        $suggestMinimumCharacters = 0;
-        if (isset($config['suggestOptions']['default']['minimumCharacters'])) {
-            $suggestMinimumCharacters = (int)$config['suggestOptions']['default']['minimumCharacters'];
-        }
-        if (isset($parameterArray['fieldTSConfig']['suggest.']['default.']['minimumCharacters'])) {
-            $suggestMinimumCharacters = (int)$parameterArray['fieldTSConfig']['suggest.']['default.']['minimumCharacters'];
-        }
-        $suggestMinimumCharacters = $suggestMinimumCharacters > 0 ? $suggestMinimumCharacters : 2;
-
-        $itemCanBeSelectedMoreThanOnce = !empty($config['multiple']);
-
-        $showMoveIcons = true;
-        if (isset($config['hideMoveIcons']) && $config['hideMoveIcons']) {
-            $showMoveIcons = false;
-        }
-        $showDeleteControl = true;
-        if (isset($config['hideDeleteIcon']) && $config['hideDeleteIcon']) {
-            $showDeleteControl = false;
         }
 
         $selectorAttributes = [
             'id' => $fieldId,
-            'data-formengine-input-name' => htmlspecialchars($elementName),
+            'data-formengine-input-name' => $elementName,
             'data-formengine-validation-rules' => $this->getValidationDataAsJsonString($config),
-            'data-maxitems' => $maxItems,
-            'size' => $size,
+            'data-maxitems' => (string)$maxItems,
+            'size' => (string)$size,
+            'class' => 'form-select',
         ];
-        $selectorClasses = [
-            'form-control',
-            'tceforms-multiselect',
-        ];
-        if ($maxItems === 1) {
-            $selectorClasses[] = 'form-select-no-siblings';
-        }
-        $selectorAttributes['class'] = implode(' ', $selectorClasses);
-        if ($maxItems !== 1 && $size !== 1) {
+        if ($isMultiple && $size !== 1) {
             $selectorAttributes['multiple'] = 'multiple';
         }
 
         $html = [];
+        $html[] = $this->renderLabel($fieldId);
         $html[] = '<div class="formengine-field-item t3js-formengine-field-item">';
-        $html[] =   $fieldInformationHtml;
-        $html[] =   '<div class="form-wizards-wrap napi-object-selector">';
-        if ($internalType === 'db' && (!isset($config['hideSuggest']) || (bool)$config['hideSuggest'] !== true)) {
-            $html[] =   '<div class="form-wizards-items-top">';
-            $html[] =       '<div class="autocomplete t3-form-suggest-container">';
-            $html[] =           '<div class="input-group">';
-            $html[] =               '<span class="input-group-addon">';
-            $html[] =                   $iconFactory->getIcon('actions-search', Icon::SIZE_SMALL)->render();
-            $html[] =               '</span>';
-            $html[] =               '<input type="search" class="napi-search form-control"';
-            $html[] =                   ' id="' . $md5OfElName . '-search" data-allowed="' . $allowed . '" data-field-id="' . $md5OfElName . '"';
-            $html[] =                   ' placeholder="' . $languageService->sL('LLL:EXT:core/Resources/Private/Language/locallang_core.xlf:labels.findRecord') . '"';
-            $html[] =                   ' data-fieldname="' . htmlspecialchars($fieldName) . '"';
-            $html[] =                   ' data-tablename="' . htmlspecialchars($table) . '"';
-            $html[] =                   ' data-field="' . htmlspecialchars($elementName) . '"';
-            $html[] =                   ' data-uid="' . htmlspecialchars($this->data['databaseRow']['uid']) . '"';
-            $html[] =                   ' data-pid="' . htmlspecialchars($this->data['parentPageRow']['uid'] ?? 0) . '"';
-            $html[] =                   ' data-fieldtype="' . htmlspecialchars($config['type']) . '"';
-            $html[] =                   ' data-minchars="' . htmlspecialchars($suggestMinimumCharacters) . '"';
-            $html[] =                   ' data-datastructureidentifier="' . htmlspecialchars($dataStructureIdentifier) . '"';
-            $html[] =                   ' data-flexformsheetname="' . htmlspecialchars($flexFormSheetName) . '"';
-            $html[] =                   ' data-flexformfieldname="' . htmlspecialchars($flexFormFieldName) . '"';
-            $html[] =                   ' data-flexformcontainername="' . htmlspecialchars($flexFormContainerName) . '"';
-            $html[] =                   ' data-flexformcontainerfieldname="' . htmlspecialchars($flexFormContainerFieldName) . '"';
-            $html[] =               '/>';
-            $html[] =           '</div>';
-            $html[] =           '<div class="autocomplete-results" data-fieldname="tceforms-multiselect-' . $md5OfElName . '" data-field-id="' . $md5OfElName . '" id="' . $md5OfElName . '-search-suggest" style="position: absolute; display: none; max-height: 300px; z-index: 9999; padding: 10px;"></div>';
-            $html[] =       '</div>';
-            $html[] =   '</div>';
+        $html[] = $fieldInformationResult['html'];
+        $html[] = '<div class="form-wizards-wrap napi-object-selector">';
+        if (empty($config['hideSuggest'])) {
+            $html[] = $this->renderSuggest($fieldId, $elementName, $allowed);
         }
-        $html[] =       '<div class="form-wizards-element">';
-        $html[] =           '<input type="hidden" class="t3js-group-hidden-field" data-formengine-input-name="' . htmlspecialchars($elementName) . '" value="' . $itemCanBeSelectedMoreThanOnce . '" />';
-        $html[] =           '<select ' . GeneralUtility::implodeAttributes($selectorAttributes, true) . '>';
-        $html[] =               implode(LF, $selectorOptionsHtml);
-        $html[] =           '</select>';
-        $html[] =       '</div>';
-        $html[] =       '<div class="form-wizards-items-aside">';
-        $html[] =           '<div class="btn-group-vertical">';
-        if ($maxItems > 1 && $size >= 5 && $showMoveIcons) {
-            $html[] =           '<a href="#"';
-            $html[] =               ' class="btn btn-default t3js-btn-option t3js-btn-moveoption-top"';
-            $html[] =               ' data-fieldname="' . htmlspecialchars($elementName) . '"';
-            $html[] =               ' title="' . htmlspecialchars($languageService->sL('LLL:EXT:core/Resources/Private/Language/locallang_core.xlf:labels.move_to_top')) . '"';
-            $html[] =           '>';
-            $html[] =               $iconFactory->getIcon('actions-move-to-top', Icon::SIZE_SMALL)->render();
-            $html[] =           '</a>';
-        }
-        if ($maxItems > 1 && $size > 1 && $showMoveIcons) {
-            $html[] =           '<a href="#"';
-            $html[] =               ' class="btn btn-default t3js-btn-option t3js-btn-moveoption-up"';
-            $html[] =               ' data-fieldname="' . htmlspecialchars($elementName) . '"';
-            $html[] =               ' title="' . htmlspecialchars($languageService->sL('LLL:EXT:core/Resources/Private/Language/locallang_core.xlf:labels.move_up')) . '"';
-            $html[] =           '>';
-            $html[] =               $iconFactory->getIcon('actions-move-up', Icon::SIZE_SMALL)->render();
-            $html[] =           '</a>';
-            $html[] =           '<a href="#"';
-            $html[] =               ' class="btn btn-default t3js-btn-option t3js-btn-moveoption-down"';
-            $html[] =               ' data-fieldname="' . htmlspecialchars($elementName) . '"';
-            $html[] =               ' title="' . htmlspecialchars($languageService->sL('LLL:EXT:core/Resources/Private/Language/locallang_core.xlf:labels.move_down')) . '"';
-            $html[] =           '>';
-            $html[] =               $iconFactory->getIcon('actions-move-down', Icon::SIZE_SMALL)->render();
-            $html[] =           '</a>';
-        }
-        if ($maxItems > 1 && $size >= 5 && $showMoveIcons) {
-            $html[] =           '<a href="#"';
-            $html[] =               ' class="btn btn-default t3js-btn-option t3js-btn-moveoption-bottom"';
-            $html[] =               ' data-fieldname="' . htmlspecialchars($elementName) . '"';
-            $html[] =               ' title="' . htmlspecialchars($languageService->sL('LLL:EXT:core/Resources/Private/Language/locallang_core.xlf:labels.move_to_bottom')) . '"';
-            $html[] =           '>';
-            $html[] =               $iconFactory->getIcon('actions-move-to-bottom', Icon::SIZE_SMALL)->render();
-            $html[] =           '</a>';
-        }
-        if ($showDeleteControl) {
-            $html[] =           '<a href="#"';
-            $html[] =               ' class="btn btn-default t3js-btn-option t3js-btn-removeoption t3js-revert-unique"';
-            $html[] =               ' data-fieldname="' . htmlspecialchars($elementName) . '"';
-            $html[] =               ' data-uid="' . htmlspecialchars($row['uid']) . '"';
-            $html[] =               ' title="' . htmlspecialchars($languageService->sL('LLL:EXT:core/Resources/Private/Language/locallang_core.xlf:labels.remove_selected')) . '"';
-            $html[] =           '>';
-            $html[] =               $iconFactory->getIcon('actions-selection-delete', Icon::SIZE_SMALL)->render();
-            $html[] =           '</a>';
-        }
-        $html[] =           '</div>';
-        $html[] =       '</div>';
-        $html[] =       '<div class="form-wizards-items-aside">';
-        $html[] =           '<div class="btn-group-vertical">';
-        $html[] =               $wizardButton;
-        $html[] =           '</div>';
-        $html[] =       '</div>';
-        if (!empty($fieldWizardHtml)) {
-            $html[] = '<div class="form-wizards-items-bottom">';
-            $html[] = $fieldWizardHtml;
-            $html[] = '</div>';
-        }
-        $html[] =   '</div>';
-        $html[] =   '<input type="hidden" id="tceforms-multiselect-value-' . $md5OfElName . '" name="' . htmlspecialchars($elementName) . '" value="' . htmlspecialchars(implode(',', $listOfSelectedValues)) . '" />';
+        $html[] = '<div class="form-wizards-element form-wizards-item-element">';
+        $html[] = '<input type="hidden" data-formengine-input-name="' . htmlspecialchars($elementName) . '" value="' . (!empty($config['multiple']) ? '1' : '') . '" />';
+        $html[] = $selectHtml($selectorAttributes);
+        $html[] = '</div>';
+        $html[] = $this->renderButtons($elementName, (int)$row['uid'], $maxItems, $size, $config);
+        $html[] = '<div class="form-wizards-items-aside form-wizards-item-aside">';
+        $html[] = '<div class="btn-group-vertical">' . $this->renderWizardButton($elementName, $allowed) . '</div>';
+        $html[] = '</div>';
+        $html[] = '</div>';
+        $html[] = '<input type="hidden" name="' . htmlspecialchars($elementName) . '" value="' . htmlspecialchars(implode(',', $listOfSelectedValues)) . '" />';
         $html[] = '</div>';
 
-        $resultArray['javaScriptModules'][] = JavaScriptModuleInstruction::create(
-            '@typo3/backend/form-engine/element/group-element.js'
-        )->instance($fieldId);
+        $resultArray['javaScriptModules'][] = JavaScriptModuleInstruction::create('@typo3/backend/form-engine/element/group-element.js')
+            ->instance($fieldId);
+        $resultArray['javaScriptModules'][] = JavaScriptModuleInstruction::create('@nordkirche/nkc-base/napi-selector.js');
+        $resultArray['stylesheetFiles'][] = 'EXT:nkc_base/Resources/Public/Css/napi-selector.css';
 
-        $resultArray['html'] = implode(LF, $html);
+        $resultArray['html'] = implode("\n", $html);
         return $resultArray;
     }
 
-    /**
-     * @return string
-     */
-    protected function renderWizardButton($url, $hmac, $iconFactory)
+    private function renderSuggest(string $fieldId, string $elementName, string $allowed): string
     {
-        return sprintf('<a data-url="%s" data-hmac="%s" class="btn btn-default napi-wizard" href="#">%s</a>', $url, $hmac, $iconFactory->getIcon('actions-insert-record', Icon::SIZE_SMALL)->render());
+        $placeholder = $this->getLanguageService()->sL('LLL:EXT:core/Resources/Private/Language/locallang_core.xlf:labels.findRecord');
+
+        return '<div class="form-wizards-items-top form-wizards-item-top">'
+            . '<div class="autocomplete t3-form-suggest-container napi-suggest">'
+            . '<div class="input-group">'
+            . '<span class="input-group-text">' . $this->iconFactory->getIcon('actions-search', IconSize::SMALL)->render() . '</span>'
+            . '<input type="search" autocomplete="off" class="form-control t3js-napi-suggest"'
+            . ' placeholder="' . htmlspecialchars($placeholder) . '"'
+            . ' data-allowed="' . htmlspecialchars($allowed) . '"'
+            . ' data-field-name="' . htmlspecialchars($elementName) . '"'
+            . ' data-select-id="' . htmlspecialchars($fieldId) . '"'
+            . ' />'
+            . '</div>'
+            . '<div class="napi-suggest-results t3js-napi-suggest-results" role="listbox"></div>'
+            . '</div>'
+            . '</div>';
     }
 
-    /**
-     * @return BackendUserAuthentication
-     */
-    protected function getBackendUserAuthentication()
+    private function renderButtons(string $elementName, int $uid, int $maxItems, int $size, array $config): string
     {
-        return $GLOBALS['BE_USER'];
-    }
+        $showMoveIcons = empty($config['hideMoveIcons']) && $maxItems !== 1 && $size > 1;
+        $showDeleteControl = empty($config['hideDeleteIcon']);
 
-    /**
-     * @return LanguageService
-     */
-    protected function getLanguageService(): LanguageService
-    {
-        return $GLOBALS['LANG'];
-    }
-
-    /**
-     * @param array $selectedItems
-     * @return array
-     * @throws ApiException
-     */
-    private function getObjects($selectedItems)
-    {
-        $objects = [];
-
-        if (count($selectedItems) && (trim($selectedItems[0]) != '')) {
-            $api = ApiService::get();
-
-            $napiService = $api->factory()->get(NapiService::class);
-
-            try {
-                $objects = $napiService->resolveUrls($selectedItems);
-            } catch (\Exception $e) {
-                // NAPI Error
+        $buttons = [];
+        if ($showMoveIcons) {
+            if ($size >= 5) {
+                $buttons[] = $this->renderButton('t3js-btn-moveoption-top', 'actions-move-to-top', 'labels.move_to_top', $elementName);
+            }
+            $buttons[] = $this->renderButton('t3js-btn-moveoption-up', 'actions-move-up', 'labels.move_up', $elementName);
+            $buttons[] = $this->renderButton('t3js-btn-moveoption-down', 'actions-move-down', 'labels.move_down', $elementName);
+            if ($size >= 5) {
+                $buttons[] = $this->renderButton('t3js-btn-moveoption-bottom', 'actions-move-to-bottom', 'labels.move_to_bottom', $elementName);
             }
         }
-        return $objects;
+        if ($showDeleteControl) {
+            $buttons[] = $this->renderButton('t3js-btn-removeoption t3js-revert-unique', 'actions-selection-delete', 'labels.remove_selected', $elementName, $uid);
+        }
+
+        if ($buttons === []) {
+            return '';
+        }
+        return '<div class="form-wizards-items-aside form-wizards-item-aside form-wizards-item-aside--move">'
+            . '<div class="btn-group-vertical">' . implode('', $buttons) . '</div>'
+            . '</div>';
+    }
+
+    private function renderButton(string $class, string $icon, string $label, string $elementName, ?int $uid = null): string
+    {
+        $title = htmlspecialchars($this->getLanguageService()->sL('LLL:EXT:core/Resources/Private/Language/locallang_core.xlf:' . $label));
+        return '<button type="button" class="btn btn-default t3js-btn-option ' . $class . '"'
+            . ' data-fieldname="' . htmlspecialchars($elementName) . '"'
+            . ($uid !== null ? ' data-uid="' . $uid . '"' : '')
+            . ' title="' . $title . '">'
+            . $this->iconFactory->getIcon($icon, IconSize::SMALL)->render()
+            . '<span class="visually-hidden">' . $title . '</span>'
+            . '</button>';
+    }
+
+    private function renderWizardButton(string $elementName, string $allowed): string
+    {
+        $wizardUrl = (string)$this->uriBuilder->buildUriFromRoute('wizard_napi', [
+            'P' => [
+                'fieldName' => $elementName,
+                'allowed' => $allowed,
+                'hmac' => $this->hashService->hmac($allowed, self::HMAC_SECRET),
+            ],
+        ]);
+        $title = htmlspecialchars($this->getLanguageService()->sL('LLL:EXT:nkc_base/Resources/Private/Language/locallang.xlf:wizard.title'));
+
+        return '<button type="button" class="btn btn-default t3js-napi-wizard"'
+            . ' data-url="' . htmlspecialchars($wizardUrl) . '"'
+            . ' title="' . $title . '">'
+            . $this->iconFactory->getIcon('actions-insert-record', IconSize::SMALL)->render()
+            . '<span class="visually-hidden">' . $title . '</span>'
+            . '</button>';
+    }
+
+    /**
+     * Resolves the selected NAPI resource URIs to objects
+     *
+     * @param string[] $uris
+     */
+    private function getObjects(array $uris): array
+    {
+        if ($uris === []) {
+            return [];
+        }
+        try {
+            /** @var NapiService $napiService */
+            $napiService = ApiService::get()->factory(NapiService::class);
+            return $napiService->resolveUrls($uris);
+        } catch (\Throwable $e) {
+            $this->logger?->warning('Could not resolve NAPI objects: ' . $e->getMessage(), ['uris' => $uris]);
+            return [];
+        }
     }
 }

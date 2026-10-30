@@ -1,0 +1,39 @@
+parameters:
+	level: 5
+	paths:
+		- Classes
+		- Configuration
+	excludePaths:
+		- .build
+	ignoreErrors:
+		# The NDK documents integer ids, but the filters also accept the ids as
+		# strings, as they come from flexforms and TypoScript.
+		-
+			identifier: argument.type
+			message: '#^Parameter \#1 \$\w+ of method Nordkirche\\Ndk\\Domain\\Query\\\w+Query::set\w+\(\) expects array<int>, list<string> given\.$#'
+			path: Classes/Controller/BaseController.php
+		# Version switch between TYPO3 v13 (FlexFormService) and v14 (FlexFormTools)
+		-
+			identifier: function.alreadyNarrowedType
+			path: Classes/Command/MapCacheCommandController.php
+			reportUnmatched: false
+		-
+			identifier: method.notFound
+			message: '#FlexFormTools::convertFlexFormContentToArray#'
+			path: Classes/Command/MapCacheCommandController.php
+			reportUnmatched: false
+		# Compatibility with NDK versions without Configuration::addMiddleware()
+		-
+			identifier: function.alreadyNarrowedType
+			message: '#addMiddleware#'
+			reportUnmatched: false
+		# Version switches between TYPO3 v13 and v14
+		-
+			message: '#SystemResource\\(SystemResourceFactory|Publishing\\SystemResourcePublisherInterface)#'
+			reportUnmatched: false
+		-
+			message: '#ExtensionUtility::registerPlugin\(\) invoked with 7 parameters#'
+			reportUnmatched: false
+		-
+			message: '#AbstractListTypeToCTypeUpdateCompat#'
+			reportUnmatched: false

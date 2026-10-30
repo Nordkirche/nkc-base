@@ -1,58 +1,51 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Nordkirche\NkcBase\ViewHelpers;
 
 use Nordkirche\Ndk\Domain\Model\ContactItem;
 use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
 
 /**
- * If a contact item is found, this viewhelper will render its children and provide the item in a variable.
- * Else it will do nothing and will not render its children.
+ * Renders the children for the first (or every) contact item of a given type
  *
- * Example:
- * <nkc:getContactItem items="{person.contactItems}" type="Website">
- *  Website: {item.value}
- * </nkc>
+ * <nkcbase:getContactItem items="{institution.contactItems}" type="E-Mail" as="mail">{mail.value}</nkcbase:getContactItem>
  */
 class GetContactItemViewHelper extends AbstractViewHelper
 {
+    /**
+     * @var bool
+     */
     protected $escapeOutput = false;
 
-    public function initializeArguments()
+    public function initializeArguments(): void
     {
-        parent::initializeArguments();
-        $this->registerArgument('items', 'object', 'Contact Items', true);
+        $this->registerArgument('items', 'iterable', 'Contact items', true);
         $this->registerArgument('type', 'string', 'Contact type', true);
-        $this->registerArgument('as', 'string', 'Alias', false, 'item');
-        $this->registerArgument('renderAllItems', 'boolean', 'if true not only the first but all contact items are rendered', false, false);
+        $this->registerArgument('as', 'string', 'Variable name of the item', false, 'item');
+        $this->registerArgument('renderAllItems', 'boolean', 'Render all matching items, not only the first one', false, false);
     }
 
-    /**
-     * @return string
-     */
     public function render(): string
     {
-        $content = '';
-
         $type = $this->arguments['type'];
         $as = $this->arguments['as'];
-        $renderAllItems = $this->arguments['renderAllItems'];
+        $items = $this->arguments['items'];
+        $items = is_array($items) ? $items : iterator_to_array($items);
 
-        $items = iterator_to_array($this->arguments['items']);
-        $items = array_filter($items, function (ContactItem $item) use ($type) {
-            return $item->getType() === $type;
-        });
-
-        if ($renderAllItems === false) {
+        $items = array_filter($items, static fn($item): bool => $item instanceof ContactItem && $item->getType() === $type);
+        if (!$this->arguments['renderAllItems']) {
             $items = array_slice($items, 0, 1);
         }
 
+        $variableProvider = $this->renderingContext->getVariableProvider();
+        $content = '';
         foreach ($items as $item) {
-            $this->templateVariableContainer->add($as, $item);
+            $variableProvider->add($as, $item);
             $content .= $this->renderChildren();
-            $this->templateVariableContainer->remove($as);
+            $variableProvider->remove($as);
         }
-
         return $content;
     }
 }

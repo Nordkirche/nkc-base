@@ -1,161 +1,129 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Nordkirche\NkcBase\Service;
 
-use Monolog\Handler\StreamHandler;
-use Monolog\Logger;
 use Nordkirche\Ndk\Api;
-use Nordkirche\Ndk\Configuration;
-use Nordkirche\Ndk\Domain\Query\AbstractQuery;
 use Nordkirche\Ndk\Domain\Query\PageQuery;
 use Nordkirche\Ndk\Domain\Repository\AbstractRepository;
-use Nordkirche\Ndk\Service\FactoryService;
 use Nordkirche\Ndk\Service\Result;
 use Nordkirche\NkcBase\Exception\ApiException;
-use TYPO3\CMS\Core\Core\Environment;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 
+/**
+ * Static facade for the NDK, kept for the NAPI extensions (nkc_address, nkc_event, ...).
+ *
+ * New code should inject NdkApiFactory instead.
+ */
 class ApiService
 {
     /**
-     * @var Api
-     */
-    protected static $NdkApi;
-
-    /**
-     * @return Api
      * @throws ApiException
      */
-    public static function get()
+    public static function get(): Api
     {
-        if (self::$NdkApi === null) {
-            self::$NdkApi = self::initializeApi();
-        }
-        return self::$NdkApi;
+        return GeneralUtility::makeInstance(NdkApiFactory::class)->getApi();
     }
 
     /**
-     * @return Api
+     * Returns the NDK repository for a NAPI object name (event, person, institution, ...)
+     *
      * @throws ApiException
      */
-    private static function initializeApi()
+    public static function getRepository(string $object): AbstractRepository
     {
-        $EXT_CONF = $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['nkc_base'];
-
-        if (self::checkConfiguration($EXT_CONF)) {
-            try {
-                $config = new Configuration(
-                    $EXT_CONF['NDK_NAPI_USER_ID'],
-                    $EXT_CONF['NDK_NAPI_ACCESS_TOKEN'],
-                    $EXT_CONF['NDK_NAPI_HOST'],
-                    $EXT_CONF['NDK_NAPI_PORT'],
-                    $EXT_CONF['NDK_NAPI_PATH'],
-                    $EXT_CONF['NDK_NAPI_PROTOCOL'],
-                    $EXT_CONF['NDK_NAPI_VERSION'],
-                    [
-                        empty($EXT_CONF['NDK_HTTP_AUTH_USERNAME']) ? '' : $EXT_CONF['NDK_HTTP_AUTH_USERNAME'],
-                        empty($EXT_CONF['NDK_HTTP_AUTH_PASSWORD']) ? '' : $EXT_CONF['NDK_HTTP_AUTH_PASSWORD'],
-                    ]
-                );
-
-                if (isset($EXT_CONF['NDK_NAPI_TIMEOUT'])) {
-                    $config->setRequestTimeout((int)($EXT_CONF['NDK_NAPI_TIMEOUT']));
-                } else {
-                    $config->setRequestTimeout(20);
-                }
-
-                if (Environment::getContext()->isDevelopment() && $EXT_CONF['NDK_LOG_FILE']) {
-                    $monolog = new Logger('NdkRequestLogger');
-                    $monolog->pushHandler(new StreamHandler($EXT_CONF['NDK_LOG_FILE']));
-                    $config->setLogger($monolog);
-                }
-
-                return new Api($config);
-            } catch (\Exception $e) {
-                throw new ApiException('Configuration error - please check API configuration', 1495105254);
-            }
-        } else {
-            // Error : configuration missing
-            throw new ApiException('Configuration error - please check API configuration', 1495105254);
+        $className = self::resolveClassName($object, 'Repository');
+        if ($className === null || !is_subclass_of($className, AbstractRepository::class)) {
+            throw new ApiException('Query error - unknown object ' . $object, 1495179007);
         }
+        return self::get()->factory($className);
     }
 
     /**
-     * @param array $EXT_CONF
-     * @return bool
-     */
-    private static function checkConfiguration($EXT_CONF)
-    {
-        return ($EXT_CONF['NDK_NAPI_HOST'] != '') &&
-            ($EXT_CONF['NDK_NAPI_PORT'] != '') &&
-            ($EXT_CONF['NDK_NAPI_PATH'] != '') &&
-            ($EXT_CONF['NDK_NAPI_PROTOCOL'] != '') &&
-            ($EXT_CONF['NDK_NAPI_VERSION'] != '');
-    }
-
-    /**
-     * @param string $object
-     * @return FactoryService|AbstractRepository
+     * Returns a new NDK query for a NAPI object name (event, person, institution, ...)
+     *
      * @throws ApiException
      */
-    public static function getRepository($object)
+    public static function getQuery(string $object): PageQuery
     {
-        $api = self::get();
-
-        $classname = sprintf('\Nordkirche\Ndk\Domain\Repository\%sRepository', ucfirst($object));
-
-        if (class_exists($classname)) {
-            return $api->factory($classname);
+        $className = self::resolveClassName($object, 'Query');
+        if ($className === null || !is_subclass_of($className, PageQuery::class)) {
+            throw new ApiException('Configuration error - unknown object ' . $object, 1495179007);
         }
-        throw new ApiException('Query error - unknown object ' . $object, 1495179007);
+        return new $className();
     }
 
     /**
-     * @param $object
-     * @return AbstractQuery
-     * @throws ApiException
+     * Fetches all pages of a query and returns the items as one list
+     *
+     * @param string[] $includes
      */
-    public static function getQuery($object)
+    public static function getAllItems(AbstractRepository $repository, PageQuery $query, array $includes = [], int $pageSize = 50): array
     {
-        $classname = sprintf('\Nordkirche\Ndk\Domain\Query\%sQuery', ucfirst($object));
-
-        if (class_exists($classname)) {
-            return  new $classname();
-        }
-        throw new ApiException('Configuration error - unknown object ' . $object, 1495179007);
-    }
-
-    /**
-     * @param AbstractRepository $repository
-     * @param PageQuery $query
-     * @param array $includes
-     * @param int $pageSize
-     * @return array
-     */
-    public static function getAllItems($repository, $query, $includes = [], $pageSize = 50)
-    {
-        $resultArray = [];
+        $items = [];
         $currentPage = 1;
 
         $query->setPageSize($pageSize);
-
-        if (count($includes)) {
+        if ($includes !== []) {
             $query->setInclude($includes);
         }
 
         do {
             $query->setPageNumber($currentPage);
-            /** @var Result $result */
             try {
+                /** @var Result $result */
                 $result = $repository->get($query);
-                foreach ($result as $item) {
-                    $resultArray[] = $item;
-                }
-                $currentPage++;
-            } catch (\Exception $e) {
+            } catch (\Exception) {
                 return [];
             }
+            foreach ($result as $item) {
+                $items[] = $item;
+            }
+            $currentPage++;
         } while ($result->getPageCount() >= $currentPage);
 
-        return $resultArray;
+        return $items;
+    }
+
+    /**
+     * Full text search for one NAPI object type, as used by the backend suggest and wizard
+     *
+     * @throws ApiException If the object type does not exist or can't be searched
+     */
+    public static function search(string $object, string $search, int $pageSize = 20): Result
+    {
+        $query = self::getQuery($object);
+        if (!method_exists($query, 'setQuery')) {
+            throw new ApiException('Query error - object ' . $object . ' does not support a full text search', 1760889601);
+        }
+        $query->setQuery(self::buildSearchQuery($search));
+        $query->setPageSize($pageSize);
+        return self::getRepository($object)->get($query);
+    }
+
+    /**
+     * Converts user input into a NAPI wildcard search: "foo bar" => "*foo* *bar*"
+     */
+    public static function buildSearchQuery(string $search): string
+    {
+        $words = GeneralUtility::trimExplode(' ', $search, true);
+        return $words === [] ? '' : '*' . implode('* *', $words) . '*';
+    }
+
+    /**
+     * Maps a NAPI object name to an NDK class. Only plain names are accepted,
+     * as the value may come from a request.
+     *
+     * @return class-string|null
+     */
+    private static function resolveClassName(string $object, string $type): ?string
+    {
+        $object = trim($object);
+        if (!preg_match('/^[a-zA-Z]+$/', $object)) {
+            return null;
+        }
+        $className = sprintf('Nordkirche\\Ndk\\Domain\\%s\\%s%s', $type, ucfirst($object), $type);
+        return class_exists($className) ? $className : null;
     }
 }

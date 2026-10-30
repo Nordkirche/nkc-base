@@ -1,0 +1,10 @@
+<f:layout name="SystemEmail" />
+<f:section name="Title">{headline}</f:section>
+<f:section name="Main"><f:if condition="{type} == 'alert'"><f:then>Die Nordkirche API (NAPI) ist seit {failuresInRow} Prüfungen nicht in Ordnung. Status: {reportData.status}</f:then><f:else>Die Nordkirche API (NAPI) antwortet wieder normal.</f:else></f:if>
+
+Geprüft: <f:format.date format="d.m.Y H:i:s">{reportData.checkedAt}</f:format.date>
+API: {reportData.baseUri}
+<f:if condition="{reportData.missingSettings}">Fehlende Konfiguration: <f:for each="{reportData.missingSettings}" as="setting" iteration="i">{setting}<f:if condition="!{i.isLast}">, </f:if></f:for>
+</f:if><f:for each="{reportData.results}" as="result">
+- {result.endpoint}: {result.status} (HTTP {result.httpStatus}, {result.totalMs} ms) {result.error}</f:for>
+</f:section>

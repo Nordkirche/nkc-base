@@ -1,102 +1,70 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Nordkirche\NkcBase\ViewHelpers;
 
-/**
- * This file is taken from the "news" Extension for TYPO3 CMS.
- *
- * For the full copyright and license information, please read the
- * LICENSE.txt file that was distributed with this source code.
- */
-
+use Psr\Http\Message\ServerRequestInterface;
+use TYPO3\CMS\Core\Http\NormalizedParams;
 use TYPO3\CMS\Core\Page\PageRenderer;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3Fluid\Fluid\Core\Rendering\RenderingContextInterface;
-use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractTagBasedViewHelper;
+use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
+use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
 
 /**
- * ViewHelper to render meta tags
+ * Adds a meta tag to the page (based on the ViewHelper of EXT:news)
  *
- * # Example: Basic Example: News title as og:title meta tag
- * <code>
- * <n:metaTag property="og:title" content="{newsItem.title}" />
- * </code>
- * <output>
- * <meta property="og:title" content="TYPO3 is awesome" />
- * </output>
- *
- * # Example: Force the attribute "name"
- * <code>
- * <n:metaTag name="keywords" content="{newsItem.keywords}" />
- * </code>
- * <output>
- * <meta name="keywords" content="news 1, news 2" />
- * </output>
+ * <nkcbase:metaTag property="og:title" content="{event.title}" />
+ * <nkcbase:metaTag name="keywords" content="{event.keywords}" />
+ * <nkcbase:metaTag property="og:url" useCurrentDomain="1" />
  */
-class MetaTagViewHelper extends AbstractTagBasedViewHelper
+class MetaTagViewHelper extends AbstractViewHelper
 {
-    /**
-     * @var string
-     */
-    protected $tagName = 'meta';
+    public function __construct(private readonly PageRenderer $pageRenderer) {}
 
-    /**
-     * Arguments initialization
-     */
-    public function initializeArguments()
+    public function initializeArguments(): void
     {
-        parent::initializeArguments();
-
-        $this->registerTagAttribute('property', 'string', 'Property of meta tag');
-        $this->registerTagAttribute('name', 'string', 'Content of meta tag using the name attribute');
-        $this->registerTagAttribute('content', 'string', 'Content of meta tag');
-
-        $this->registerArgument('useCurrentDomain', 'boolean', 'use current domain', false, false);
-        $this->registerArgument('forceAbsoluteUrl', 'boolean', 'force absolute url', false, false);
+        $this->registerArgument('property', 'string', 'Value of the "property" attribute');
+        $this->registerArgument('name', 'string', 'Value of the "name" attribute');
+        $this->registerArgument('content', 'string', 'Content of the meta tag', false, '');
+        $this->registerArgument('useCurrentDomain', 'boolean', 'Use the current URL as content', false, false);
+        $this->registerArgument('forceAbsoluteUrl', 'boolean', 'Prepend the site URL to a relative content', false, false);
     }
 
-    /**
-     * Renders a meta tag
-     */
-    public static function renderStatic(array $arguments, \Closure $renderChildrenClosure, RenderingContextInterface $renderingContext)
+    public function render(): string
     {
-        // Skip if current record is part of tt_content CType shortcut
-        if (!empty($GLOBALS['TSFE']->recordRegister)
-            && is_array($GLOBALS['TSFE']->recordRegister)
-            && str_contains(array_keys($GLOBALS['TSFE']->recordRegister)[0], 'tt_content:')
-            && !empty($GLOBALS['TSFE']->currentRecord)
-            && str_contains($GLOBALS['TSFE']->currentRecord, 'tx_news_domain_model_news:')
-        ) {
-            return;
+        $request = $this->renderingContext->hasAttribute(ServerRequestInterface::class)
+            ? $this->renderingContext->getAttribute(ServerRequestInterface::class)
+            : null;
+
+        // Skip records of EXT:news, rendered in another content element (e.g. CType "shortcut")
+        $contentObject = $request?->getAttribute('currentContentObject');
+        if ($contentObject instanceof ContentObjectRenderer && str_starts_with($contentObject->currentRecord, 'tx_news_domain_model_news:')) {
+            return '';
         }
 
-        $useCurrentDomain = $arguments['useCurrentDomain'];
-        $forceAbsoluteUrl = $arguments['forceAbsoluteUrl'];
-        $content = (string)$arguments['content'];
+        $normalizedParams = $request?->getAttribute('normalizedParams');
+        $content = (string)$this->arguments['content'];
 
-        // set current domain
-        if ($useCurrentDomain) {
-            $content = GeneralUtility::getIndpEnv('TYPO3_REQUEST_URL');
+        if ($this->arguments['useCurrentDomain'] && $normalizedParams instanceof NormalizedParams) {
+            $content = $normalizedParams->getRequestUrl();
         }
 
-        // prepend current domain
-        if ($forceAbsoluteUrl) {
-            $parsedPath = parse_url($content);
-            if (is_array($parsedPath) && !isset($parsedPath['host'])) {
-                $content =
-                    rtrim(GeneralUtility::getIndpEnv('TYPO3_SITE_URL'), '/')
-                    . '/'
-                    . ltrim($content, '/');
+        if ($this->arguments['forceAbsoluteUrl'] && $normalizedParams instanceof NormalizedParams) {
+            $parsedUrl = parse_url($content);
+            if (is_array($parsedUrl) && !isset($parsedUrl['host'])) {
+                $content = rtrim($normalizedParams->getSiteUrl(), '/') . '/' . ltrim($content, '/');
             }
         }
 
-        if ($content !== '') {
-            $pageRenderer = GeneralUtility::makeInstance(PageRenderer::class);
-            if ($arguments['property']) {
-                $pageRenderer->setMetaTag('property', $arguments['property'], $content);
-            } elseif ($arguments['name']) {
-                $pageRenderer->setMetaTag('name', $arguments['name'], $content);
-            }
+        if ($content === '') {
+            return '';
         }
+
+        if (!empty($this->arguments['property'])) {
+            $this->pageRenderer->setMetaTag('property', $this->arguments['property'], $content);
+        } elseif (!empty($this->arguments['name'])) {
+            $this->pageRenderer->setMetaTag('name', $this->arguments['name'], $content);
+        }
+        return '';
     }
 }

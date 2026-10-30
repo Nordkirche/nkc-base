@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<xliff version="1.0">
-    <file source-language="en" datatype="plaintext" original="messages" product-name="nkc_base" date="2017-05-21T15:08:27+02:00">
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+    <file source-language="de" datatype="plaintext" original="messages" product-name="nkc_base" date="2017-05-21T15:08:27+02:00">
         <header/>
         <body>
             <trans-unit id="header.find">
@@ -64,6 +64,15 @@
             </trans-unit>
             <trans-unit id="search.feedback">
                 <source>Die Suche ergab leider keinen Treffer</source>
+            </trans-unit>
+            <trans-unit id="wizard.title">
+                <source>NAPI-Objekte suchen</source>
+            </trans-unit>
+            <trans-unit id="wizard.added">
+                <source>Übernommen</source>
+            </trans-unit>
+            <trans-unit id="suggest.error">
+                <source>Die Suche in der NAPI ist fehlgeschlagen</source>
             </trans-unit>
         </body>
     </file>

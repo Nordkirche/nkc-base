@@ -1,24 +1,21 @@
 <?php
 
-namespace  Nordkirche\NkcBase\ViewHelpers;
+declare(strict_types=1);
+
+namespace Nordkirche\NkcBase\ViewHelpers;
 
 use Nordkirche\Ndk\Domain\Model\ResourcePlaceholder;
 use Nordkirche\Ndk\Service\NapiService;
 use Nordkirche\NkcBase\Service\ApiService;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
-use TYPO3Fluid\Fluid\Core\ViewHelper\Exception;
 
 /**
- * NapiResourcesViewHelper
+ * Resolves NAPI resource URIs and assigns the objects to a variable
  *
- * = Examples =
- *
- * <code title="Napi Resources ViewHelper">
  * <nkcbase:napiResources resourceString="{newsItem.authors}" as="authors">
- *   <f:for each="{authors}" as="author">
- *     {author.name.first}
- *   </f:for>
- * </nkcbase:napiResources> * </code>
+ *   <f:for each="{authors}" as="author">{author.name.first}</f:for>
+ * </nkcbase:napiResources>
  */
 class NapiResourcesViewHelper extends AbstractViewHelper
 {
@@ -27,50 +24,29 @@ class NapiResourcesViewHelper extends AbstractViewHelper
      */
     protected $escapeOutput = false;
 
-    /**
-     * Initialize arguments.
-     *
-     * @throws Exception
-     */
-    public function initializeArguments()
+    public function initializeArguments(): void
     {
-        parent::initializeArguments();
-        $this->registerArgument(
-            'resourceString',
-            'string',
-            'The Napi Resource string (one or multiple resources separated by comma)'
-        );
-        $this->registerArgument(
-            'as',
-            'string',
-            'Template variable name to assign; if not specified the ViewHelper returns the variable instead.'
-        );
+        $this->registerArgument('resourceString', 'string', 'One or more NAPI resource URIs, separated by comma');
+        $this->registerArgument('as', 'string', 'Variable name for the resolved objects', false, 'resources');
     }
 
-    /**
-     * Returns the given resources from the Napi
-     *
-     * @return mixed
-     */
-    public function render()
+    public function render(): mixed
     {
         $collection = [];
+        $uris = GeneralUtility::trimExplode(',', (string)$this->arguments['resourceString'], true);
 
-        $as = isset($this->arguments['as']) ? $this->arguments['as'] : 'resources';
-
-        /** @var NapiService $api */
-        $api = ApiService::get()->factory(NapiService::class);
-
-        $resources = $api->resolveUrls(explode(',', $this->arguments['resourceString']));
-
-        foreach ($resources as $object) {
-            if (!($object instanceof ResourcePlaceholder)) {
-                $collection[] = $object;
+        if ($uris !== []) {
+            /** @var NapiService $napiService */
+            $napiService = ApiService::get()->factory(NapiService::class);
+            foreach ($napiService->resolveUrls($uris) as $object) {
+                if (!$object instanceof ResourcePlaceholder) {
+                    $collection[] = $object;
+                }
             }
         }
 
-        $templateVariableContainer = $this->renderingContext->getVariableProvider();
-        $templateVariableContainer->add($as, $collection);
+        // The variable stays available after the tag (also for self-closing usage)
+        $this->renderingContext->getVariableProvider()->add((string)$this->arguments['as'], $collection);
         return $this->renderChildren();
     }
 }

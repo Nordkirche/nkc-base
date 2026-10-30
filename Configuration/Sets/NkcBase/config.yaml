@@ -1,0 +1,5 @@
+name: nordkirche/nkc-base
+label: 'Nordkirche NAPI Client Base Library'
+# Loaded before nkc_base, which extends lib.contentElement
+optionalDependencies:
+  - typo3/fluid-styled-content

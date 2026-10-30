@@ -1,33 +1,35 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Nordkirche\NkcBase\CustomField;
 
 use Nordkirche\Ndk\Domain\Query\PageQuery;
-use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\NkcBase\Service\ApiService;
 
+/**
+ * itemsProcFunc: all NAPI objects of one type as select items
+ *
+ *   'itemsProcFunc' => \Nordkirche\NkcBase\CustomField\SelectObject::class . '->createNapiItems',
+ *   'allowed' => 'institutionType',
+ *   'sort' => 'name',
+ */
 class SelectObject
 {
-    /**
-     * @param array $config
-     * @return array
-     * @throws ApiException
-     */
-    public function createNapiItems($config)
+    public function createNapiItems(array &$config): array
     {
-        $repository = ApiService::getRepository($config['config']['allowed']);
+        $repository = ApiService::getRepository((string)($config['config']['allowed'] ?? ''));
         $query = new PageQuery();
-        if (isset($config['config']['sort'])) {
+        if (!empty($config['config']['sort'])) {
             $query->setSort($config['config']['sort']);
         }
-        $items = ApiService::getAllItems($repository, $query);
-        foreach ($items as $object) {
+
+        foreach (ApiService::getAllItems($repository, $query) as $object) {
             $config['items'][] = [
-                '0' => $object->getLabel(),
-                '1' => (string)$object,
+                'label' => (string)$object->getLabel(),
+                'value' => (string)$object,
             ];
         }
-
         return $config;
     }
 }

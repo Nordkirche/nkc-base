@@ -1,0 +1,18 @@
+categories:
+  nkcBase:
+    label: 'Nordkirche NAPI'
+  nkcBase.paginate:
+    label: 'Pagination'
+    parent: nkcBase
+
+settings:
+  nkcBase.paginate.itemsPerPage:
+    label: 'Items per page'
+    category: nkcBase.paginate
+    type: int
+    default: 20
+  nkcBase.paginate.maximumNumberOfLinks:
+    label: 'Maximum number of page links'
+    category: nkcBase.paginate
+    type: int
+    default: 3

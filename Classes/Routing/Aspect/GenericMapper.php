@@ -1,14 +1,14 @@
 <?php
-declare(strict_types = 1);
+
+declare(strict_types=1);
 
 namespace Nordkirche\NkcBase\Routing\Aspect;
 
+use Nordkirche\NkcBase\Domain\Repository\GenericRepositoryInterface;
 use TYPO3\CMS\Core\Charset\CharsetConverter;
-use TYPO3\CMS\Core\Context\ContextAwareInterface;
-use TYPO3\CMS\Core\Context\ContextAwareTrait;
+use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\QueryBuilder;
-use TYPO3\CMS\Core\Routing\Aspect\AspectTrait;
 use TYPO3\CMS\Core\Routing\Aspect\PersistedMappableAspectInterface;
 use TYPO3\CMS\Core\Routing\Aspect\SiteAccessorTrait;
 use TYPO3\CMS\Core\Routing\Aspect\SiteLanguageAccessorTrait;
@@ -17,296 +17,214 @@ use TYPO3\CMS\Core\Site\SiteAwareInterface;
 use TYPO3\CMS\Core\Site\SiteLanguageAwareInterface;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
-
 /**
- * Classic usage when using a "URL segment" (e.g. slug) field without external data.
+ * Maps NAPI object ids to readable URL segments. Generated slugs are stored in
+ * the table tx_slug_mapping, so the NAPI is only asked once per object.
  *
  * Example:
  *   routeEnhancers:
  *     EventsPlugin:
  *       type: Extbase
- *       extension: NkcEvents
+ *       extension: NkcEvent
  *       plugin: Main
  *       routes:
- *         - { routePath: '/events/{event}', _controller: 'Event::show', _arguments: {'event': 'event_name'}}
- *       defaultController: 'Events2::list'
+ *         - { routePath: '/events/{event}', _controller: 'Event::show', _arguments: {'event': 'uid'} }
  *       aspects:
- *         event_name:
+ *         event:
  *           type: GenericMapper
- *           mapper: 'nkc_base',
+ *           mapper: 'nkc_base'
  *           object: 'event'
  *           routeFieldResult: '{title}'
  */
-
-class GenericMapper implements PersistedMappableAspectInterface, StaticMappableAspectInterface, ContextAwareInterface, SiteLanguageAwareInterface, SiteAwareInterface
+class GenericMapper implements PersistedMappableAspectInterface, StaticMappableAspectInterface, SiteLanguageAwareInterface, SiteAwareInterface
 {
-    use AspectTrait;
     use SiteLanguageAccessorTrait;
     use SiteAccessorTrait;
-    use ContextAwareTrait;
 
     protected const PATTERN_RESULT = '#\{(?P<fieldName>[^}]+)\}#';
+    protected const TABLE_NAME = 'tx_slug_mapping';
 
     /**
-     * @var array
+     * Safety limit when appending a counter to make a slug unique
      */
-    protected $settings;
+    protected const MAX_UNIFY_ATTEMPTS = 1000;
 
     /**
-     * @var string
+     * @var class-string<GenericRepositoryInterface>
      */
-    protected $mapper;
-
-    /**
-     * @var string
-     */
-    protected $mapperKey;
-
-    /**
-     * @var string
-     */
-    protected $object;
-
-    /**
-     * @var string
-     */
-    protected $tableName = 'tx_slug_mapping';
-
-    /**
-     * @var bool
-     */
-    protected $prependSlashInSlug = false;
-
-    /**
-     * @var string
-     */
-    protected $routeFieldResult;
+    protected string $mapper;
+    protected string $mapperKey;
+    protected string $object;
+    protected bool $prependSlashInSlug = false;
+    protected string $fallbackCharacter = '-';
+    protected string $routeFieldResult = '';
 
     /**
      * @var string[]
      */
-    protected $routeFieldResultNames;
-
+    protected array $routeFieldResultNames = [];
 
     /**
-     * @param array $settings
      * @throws \InvalidArgumentException
      */
-    public function __construct(array $settings)
+    public function __construct(protected array $settings)
     {
-        $this->settings = $settings;
+        $mapperKey = $settings['mapper'] ?? null;
+        $mapper = is_string($mapperKey) ? ($GLOBALS['TYPO3_CONF_VARS']['EXT']['slug']['repository'][$mapperKey] ?? null) : null;
+        if (!is_string($mapper) || $mapper === '') {
+            throw new \InvalidArgumentException('Unknown mapper: ' . (is_string($mapperKey) ? $mapperKey : ''), 1537277133);
+        }
+        $this->mapper = $mapper;
+        $this->mapperKey = $mapperKey;
 
-        if (isset($GLOBALS['TYPO3_CONF_VARS']['EXT']['slug']['repository'][$this->settings['mapper']])) {
-            $this->mapper = $GLOBALS['TYPO3_CONF_VARS']['EXT']['slug']['repository'][$this->settings['mapper']];
-            $this->mapperKey = $this->settings['mapper'];
-        } else {
-            throw new \InvalidArgumentException(
-                'Unknown mapper: '.$this->settings['mapper'],
-                1537277133
-            );
+        if (!is_string($settings['object'] ?? null)) {
+            throw new \InvalidArgumentException('object must be string', 1537277134);
         }
-        if (!is_string($this->settings['object'])) {
-            throw new \InvalidArgumentException(
-                'object must be string',
-                1537277133
-            );
-        } else {
-            $this->object = $this->settings['object'];
+        $this->object = $settings['object'];
+
+        if (isset($settings['prependSlashInSlug'])) {
+            $this->prependSlashInSlug = filter_var($settings['prependSlashInSlug'], FILTER_VALIDATE_BOOLEAN);
         }
-        if (isset($this->settings['prependSlashInSlug']) && is_string($this->settings['prependSlashInSlug'])) {
-            $this->prependSlashInSlug = (strtolower($this->settings['prependSlashInSlug']) == 'true');
-        }
-        if (isset($this->settings['routeFieldResult']) && !is_string($this->settings['routeFieldResult'])) {
-            throw new \InvalidArgumentException('routeFieldResult must be string', 1537277175);
+        if (isset($settings['fallbackCharacter']) && is_string($settings['fallbackCharacter'])) {
+            $this->fallbackCharacter = $settings['fallbackCharacter'];
         }
 
-        if (isset($this->settings['routeFieldResult'])) {
-            if (!preg_match_all(static::PATTERN_RESULT, $this->settings['routeFieldResult'], $routeFieldResultNames)) {
-                throw new \InvalidArgumentException(
-                    'routeFieldResult must contain substitutable field names',
-                    1537962752
-                );
+        if (isset($settings['routeFieldResult'])) {
+            if (!is_string($settings['routeFieldResult'])) {
+                throw new \InvalidArgumentException('routeFieldResult must be string', 1537277175);
             }
-
-            $this->routeFieldResult = $this->settings['routeFieldResult'];
-            $this->routeFieldResultNames = $routeFieldResultNames['fieldName'] ?? [];
+            if (!preg_match_all(static::PATTERN_RESULT, $settings['routeFieldResult'], $routeFieldResultNames)) {
+                throw new \InvalidArgumentException('routeFieldResult must contain substitutable field names', 1537962752);
+            }
+            $this->routeFieldResult = $settings['routeFieldResult'];
+            $this->routeFieldResultNames = $routeFieldResultNames['fieldName'];
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function generate(string $value): ?string
     {
-        if ($routeField = $this->findByIdentifier($value)) {
-            return $routeField['slug'];
-        } else {
-            // Retrieve new value
-            if ($identifier = $this->mapper::getRouteFieldResult($this->object, $value, $this->routeFieldResultNames, $this->routeFieldResult)) {
-                if ($slug = $this->unify($this->sanitize($identifier))) {
-                    $this->persist($value, $slug);
-                    return $slug;
-                } else {
-                    return $value;
-                }
-            } else {
-                return $value;
-            }
+        $mapping = $this->findByIdentifier($value);
+        if ($mapping !== null) {
+            return $mapping['slug'];
         }
+
+        // Unknown object: ask the NAPI once and remember the slug
+        $label = $this->mapper::getRouteFieldResult($this->object, $value, $this->routeFieldResultNames, $this->routeFieldResult);
+        if ($label === '') {
+            return $value;
+        }
+
+        $slug = $this->unify($this->sanitize($label));
+        if ($slug === '') {
+            return $value;
+        }
+
+        $this->persist($value, $slug);
+        return $slug;
     }
 
-
-    /**
-     * {@inheritdoc}
-     */
     public function resolve(string $value): ?string
     {
-        if ($routeField = $this->findByRouteFieldValue($value)) {
-            return $routeField['object_id'];
-        } else {
-            return null;
-        }
+        return $this->findByRouteFieldValue($value)['object_id'] ?? null;
     }
 
-
-    /**
-     * @return QueryBuilder
-     */
     protected function createQueryBuilder(): QueryBuilder
     {
-        return GeneralUtility::makeInstance(ConnectionPool::class)
-            ->getQueryBuilderForTable($this->tableName)
-            ->from($this->tableName);
+        return GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable(static::TABLE_NAME);
     }
 
-    /**
-     * @param string $value
-     * @return array|null
-     */
     protected function findByRouteFieldValue(string $value): ?array
     {
-        $queryBuilder = $this->createQueryBuilder();
-        $result = $queryBuilder
-            ->select('*')
-            ->where(
-                $queryBuilder->expr()->eq(
-                'object_name',
-                $queryBuilder->createNamedParameter($this->getbObjectName(), \PDO::PARAM_STR)
-            ))
-            ->andWhere(
-                $queryBuilder->expr()->eq(
-                    'slug',
-                $queryBuilder->createNamedParameter($value, \PDO::PARAM_STR)
-
-            ))
-            ->execute()
-            ->fetchAssociative();
-        return $result !== false ? $result : null;
+        return $this->findOneBy('slug', $value);
     }
 
-    /**
-     * @param string $value
-     * @return array|null
-     */
     protected function findByIdentifier(string $value): ?array
     {
-        $queryBuilder = $this->createQueryBuilder();
-        $result = $queryBuilder
-            ->select('*')
-            ->where(
-                $queryBuilder->expr()->eq(
-                    'object_name',
-                    $queryBuilder->createNamedParameter($this->getbObjectName(), \PDO::PARAM_STR)
-                ))
-            ->andWhere($queryBuilder->expr()->eq(
-                'object_id',
-                $queryBuilder->createNamedParameter($value, \PDO::PARAM_STR)
-            ))
-            ->execute()
-            ->fetchAssociative();
-        return $result !== false ? $result : null;
+        return $this->findOneBy('object_id', $value);
     }
 
-
-    /**
-     * @param $identifier
-     * @param $slug
-     */
-    protected function persist($identifier, $slug) {
+    protected function findOneBy(string $field, string $value): ?array
+    {
         $queryBuilder = $this->createQueryBuilder();
-        $queryBuilder
-            ->insert($this->tableName)
-            ->values([
-                'object_name' => $this->getbObjectName(),
-                'object_id' =>  $identifier,
+        $row = $queryBuilder
+            ->select('*')
+            ->from(static::TABLE_NAME)
+            ->where(
+                $queryBuilder->expr()->eq('object_name', $queryBuilder->createNamedParameter($this->getObjectName(), Connection::PARAM_STR)),
+                $queryBuilder->expr()->eq($field, $queryBuilder->createNamedParameter($value, Connection::PARAM_STR))
+            )
+            ->setMaxResults(1)
+            ->executeQuery()
+            ->fetchAssociative();
+
+        return $row !== false ? $row : null;
+    }
+
+    protected function persist(string $identifier, string $slug): void
+    {
+        GeneralUtility::makeInstance(ConnectionPool::class)
+            ->getConnectionForTable(static::TABLE_NAME)
+            ->insert(static::TABLE_NAME, [
+                'object_name' => $this->getObjectName(),
+                'object_id' => $identifier,
                 'slug' => $slug,
                 'crdate' => time(),
-                'tstamp' => time()
-            ])
-            ->execute();
+                'tstamp' => time(),
+            ]);
     }
 
-
     /**
-     * Cleans a slug value so it is used directly in the path segment of a URL.
-     *
-     * @param string $slug
-     * @return string
+     * Cleans a value so it can be used directly in the path segment of a URL.
+     * Follows the rules of the core SlugHelper.
      */
-    private function sanitize(string $slug): string
+    protected function sanitize(string $slug): string
     {
-        // Convert to lowercase + remove tags
+        $fallbackCharacter = $this->fallbackCharacter;
+
         $slug = mb_strtolower($slug, 'utf-8');
         $slug = strip_tags($slug);
-        $slug = str_replace('/', '-', $slug);
+        $slug = str_replace('/', $fallbackCharacter, $slug);
 
-        // Convert some special tokens (space, "_" and "-") to the space character
-        $fallbackCharacter = (string)($this->configuration['fallbackCharacter'] ?? '-');
-        $slug = preg_replace('/[ \t\x{00A0}\-+_]+/u', $fallbackCharacter, $slug);
+        // Convert some special tokens (space, "_" and "-") to the fallback character
+        $slug = (string)preg_replace('/[ \t\x{00A0}\-+_]+/u', $fallbackCharacter, $slug);
 
-        // Convert extended letters to ascii equivalents
-        // The specCharsToASCII() converts "€" to "EUR"
-        $slug = GeneralUtility::makeInstance(CharsetConverter::class)->specCharsToASCII('utf-8', $slug);
+        // Convert extended letters to ascii equivalents ("€" becomes "EUR")
+        $slug = GeneralUtility::makeInstance(CharsetConverter::class)->utf8_char_mapping($slug);
 
-        // Get rid of all invalid characters, but allow slashes
-        $slug = preg_replace('/[^\p{L}\p{M}0-9\/' . preg_quote($fallbackCharacter) . ']/u', '', $slug);
+        // Remove all invalid characters
+        $slug = (string)preg_replace('/[^\p{L}\p{M}0-9' . preg_quote($fallbackCharacter, '/') . ']/u', '', $slug);
 
-        // Convert multiple fallback characters to a single one
         if ($fallbackCharacter !== '') {
-            $slug = preg_replace('/' . preg_quote($fallbackCharacter) . '{2,}/', $fallbackCharacter, $slug);
+            // Merge multiple fallback characters and trim them
+            $slug = (string)preg_replace('/' . preg_quote($fallbackCharacter, '/') . '{2,}/', $fallbackCharacter, $slug);
+            $slug = trim($slug, $fallbackCharacter);
         }
 
-        // Ensure slug is lower cased after all replacement was done
         $slug = mb_strtolower($slug, 'utf-8');
-        // Extract slug, thus it does not have wrapping fallback and slash characters
-        // Remove trailing and beginning slashes, except if the trailing slash was added, then we'll re-add it
-        $appendTrailingSlash = $slug !== '' && substr($slug, -1) === '/';
-        $slug = $slug . ($appendTrailingSlash ? '/' : '');
-        if ($this->prependSlashInSlug && ($slug[0] ?? '') !== '/') {
+
+        if ($slug !== '' && $this->prependSlashInSlug) {
             $slug = '/' . $slug;
         }
         return $slug;
     }
 
     /**
-     * @param $slug
-     * @return string
+     * Appends -1, -2, ... until the slug is not used by another object of the same type
      */
-    private function unify($slug) {
-        $originalSlug = $slug;
-        $count = 1;
-        while ($check = $this->findByRouteFieldValue($slug)) {
-            $slug = $originalSlug.'-'.$count;
-            $count++;
+    protected function unify(string $slug): string
+    {
+        $candidate = $slug;
+        for ($count = 1; $this->findByRouteFieldValue($candidate) !== null; $count++) {
+            if ($count > static::MAX_UNIFY_ATTEMPTS) {
+                return '';
+            }
+            $candidate = $slug . '-' . $count;
         }
-        return $slug;
+        return $candidate;
     }
 
-    /**
-     * @return string
-     */
-    private function getbObjectName() {
-        return sprintf('%s_%s', $this->mapperKey, $this->object);
+    protected function getObjectName(): string
+    {
+        return $this->mapperKey . '_' . $this->object;
     }
-
 }

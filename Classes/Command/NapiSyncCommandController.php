@@ -1,23 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Nordkirche\NkcBase\Command;
 
-/***
- *
- * This file is part of the "NkcBase" Extension for TYPO3 CMS.
- *
- * For the full copyright and license information, please read the
- * LICENSE.txt file that was distributed with this source code.
- *
- *  (c) 2017 Holger McCloy <hallo@netzleuchten.com>, netzleuchten GmbH
- *
- ***/
-use Nordkirche\Ndk\Api;
 use Nordkirche\Ndk\Domain\Model\Category;
 use Nordkirche\Ndk\Domain\Query\PageQuery;
 use Nordkirche\Ndk\Domain\Repository\CategoryRepository;
-use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\NkcBase\Service\ApiService;
+use Nordkirche\NkcBase\Service\NdkApiFactory;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -25,120 +17,86 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
 
+/**
+ * Imports the NAPI categories into sys_category. The uid of a category is the NAPI id.
+ */
+#[AsCommand(
+    name: 'nkc_base:napi_sync',
+    description: 'Synchronisiert die NAPI Kategorien mit der lokalen Datenbank. ACHTUNG: überschreibt Kategorien mit gleicher UID!',
+)]
 class NapiSyncCommandController extends Command
 {
-    /**
-     * @var \Nordkirche\NkcBase\Domain\Repository\CategoryRepository
-     */
-    protected $categoryRepository;
+    private const TABLE = 'sys_category';
 
-    /**
-     * @var Api
-     */
-    protected $api;
-
-    /**
-     * Configure the command by defining the name, options and arguments
-     */
-    protected function configure()
-    {
-        $this->setName('NAPI Daten Synchronisation (Kategorien)')
-            ->setDescription('Synchronisiert die NAPI Kategorien mit der lokalen Datenbank. ACHTUNG: destruktiv!');
-
-        $this->addArgument(
-            'pid',
-            InputArgument::REQUIRED,
-            'Seiten-ID der Kategorien'
-        );
+    public function __construct(
+        private readonly NdkApiFactory $ndkApiFactory,
+        private readonly ConnectionPool $connectionPool,
+    ) {
+        parent::__construct();
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return int
-     * @throws ApiException
-     */
+    protected function configure(): void
+    {
+        $this->addArgument('pid', InputArgument::REQUIRED, 'Seiten-ID der Kategorien');
+    }
+
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $pid = $input->getArgument('pid');
-
         $io = new SymfonyStyle($input, $output);
-        $io->title('Start napi sync');
+        $io->title('NAPI Kategorien synchronisieren');
 
-        $this->categoryRepository = GeneralUtility::makeInstance(\Nordkirche\NkcBase\Domain\Repository\CategoryRepository::class);
+        $pid = (int)$input->getArgument('pid');
 
-        $this->api = ApiService::get();
-        $repository = $this->api->factory(CategoryRepository::class);
+        $api = $this->ndkApiFactory->getApi();
+        $categories = ApiService::getAllItems($api->factory(CategoryRepository::class), $api->factory(PageQuery::class));
 
-        $query = $this->api->factory(PageQuery::class);
+        if ($categories === []) {
+            $io->warning('Die NAPI hat keine Kategorien geliefert.');
+            return Command::FAILURE;
+        }
 
-        $categories = ApiService::getAllItems($repository, $query);
+        $connection = $this->connectionPool->getConnectionForTable(self::TABLE);
+        $existingUids = $this->getExistingUids($connection);
+        $created = $updated = 0;
 
-        foreach ($categories as $importCategory) {
-            $category = $this->getCategory($importCategory->getId());
+        foreach ($categories as $category) {
+            $parent = $category->getParent();
+            $uid = (int)$category->getId();
+            $record = [
+                'pid' => $pid,
+                'title' => (string)$category->getName(),
+                'parent' => $parent instanceof Category ? (int)$parent->getId() : 0,
+                'tstamp' => time(),
+            ];
 
-            $update = (bool)count($category);
-
-            $parent = $importCategory->getParent();
-
-            $category['uid'] = $importCategory->getId();
-            $category['title'] = $importCategory->getName();
-            $category['pid'] = $pid;
-            $category['parent'] =  ($parent instanceof Category) ? $parent->getId() : 0;
-
-            if ($update) {
-                $this->updateCategory($category);
+            if (isset($existingUids[$uid])) {
+                $connection->update(self::TABLE, $record, ['uid' => $uid]);
+                $updated++;
             } else {
-                $this->createCategory($category);
+                $connection->insert(self::TABLE, $record + [
+                    'uid' => $uid,
+                    'crdate' => time(),
+                    'l10n_diffsource' => '',
+                ]);
+                $created++;
             }
         }
 
-        $io->success('Napi sync completed.');
-
-        return 0;
+        $io->success(sprintf('NAPI Sync abgeschlossen: %d neu, %d aktualisiert.', $created, $updated));
+        return Command::SUCCESS;
     }
 
     /**
-     * @param $category
+     * All uids of sys_category, including deleted and hidden records
+     *
+     * @return array<int, true>
      */
-    private function updateCategory($category)
+    private function getExistingUids(Connection $connection): array
     {
-        /** @var Connection $connection */
-        $connection = GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable('sys_category');
-        $connection->update('sys_category', $category, ['uid' => (int)($category['uid'])]);
-    }
-
-    /**
-     * @param $category
-     */
-    private function createCategory($category)
-    {
-        $category['crdate'] = time();
-        $category['tstamp'] = time();
-        $category['l10n_diffsource'] = '';
-
-        /** @var Connection $connection */
-        $connection = GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable('sys_category');
-        $connection->insert('sys_category', $category);
-    }
-
-    /**
-     * @param $uid
-     * @return array
-     */
-    private function getCategory($uid)
-    {
-        $category = $this->categoryRepository->findByUid($uid);
-        if ($category instanceof \TYPO3\CMS\Extbase\Domain\Model\Category) {
-            return [
-                'uid' 			=> $category->getUid(),
-                'pid'			=> $category->getPid(),
-                'title' 		=> $category->getTitle(),
-                'parent' 		=> $category->getParent() ? $category->getParent()->getUid() : 0,
-            ];
-        }
-        return [];
+        $queryBuilder = $connection->createQueryBuilder();
+        $queryBuilder->getRestrictions()->removeAll();
+        $uids = $queryBuilder->select('uid')->from(self::TABLE)->executeQuery()->fetchFirstColumn();
+        return array_fill_keys(array_map(intval(...), $uids), true);
     }
 }

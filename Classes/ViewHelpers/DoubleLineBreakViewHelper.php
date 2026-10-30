@@ -1,49 +1,36 @@
 <?php
 
-namespace  Nordkirche\NkcBase\ViewHelpers;
+declare(strict_types=1);
 
-use TYPO3Fluid\Fluid\Core\Rendering\RenderingContextInterface;
+namespace Nordkirche\NkcBase\ViewHelpers;
+
 use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
-use TYPO3Fluid\Fluid\Core\ViewHelper\Exception;
-use TYPO3Fluid\Fluid\Core\ViewHelper\Traits\CompileWithContentArgumentAndRenderStatic;
 
 /**
- * Simple viuewhelper to reduce double line breaks in e.g. user input
+ * Collapses multiple line breaks into a single one
  *
- * = Example =
- *
- * <code title="Example">
- * <f:doubleLinkBreak>{text_with_linebreaks}</f:doubleLinkBreak>
- * </code>
+ * <nkcbase:doubleLineBreak>{text}</nkcbase:doubleLineBreak>
  */
 class DoubleLineBreakViewHelper extends AbstractViewHelper
 {
-    use CompileWithContentArgumentAndRenderStatic;
-
     /**
      * @var bool
      */
     protected $escapeOutput = false;
 
-    /**
-     * Initialize arguments.
-     *
-     * @throws Exception
-     */
-    public function initializeArguments()
+    public function initializeArguments(): void
     {
-        parent::initializeArguments();
-        $this->registerArgument('value', 'string', 'string to format');
+        $this->registerArgument('value', 'string', 'String to format');
     }
 
-    /**
-     * @param array $arguments
-     * @param \Closure $renderChildrenClosure
-     * @param RenderingContextInterface $renderingContext
-     * @return string
-     */
-    public static function renderStatic(array $arguments, \Closure $renderChildrenClosure, RenderingContextInterface $renderingContext)
+    public function getContentArgumentName(): string
     {
-        return preg_replace("/[\r\n]+/", "\n", $renderChildrenClosure());
+        return 'value';
+    }
+
+    public function render(): string
+    {
+        $value = (string)($this->arguments['value'] ?? $this->renderChildren());
+        return (string)preg_replace("/[\r\n]+/", "\n", $value);
     }
 }

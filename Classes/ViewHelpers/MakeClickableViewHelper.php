@@ -1,63 +1,43 @@
 <?php
 
-namespace  Nordkirche\NkcBase\ViewHelpers;
+declare(strict_types=1);
 
-use TYPO3Fluid\Fluid\Core\Rendering\RenderingContextInterface;
+namespace Nordkirche\NkcBase\ViewHelpers;
+
 use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
-use TYPO3Fluid\Fluid\Core\ViewHelper\Exception;
-use TYPO3Fluid\Fluid\Core\ViewHelper\Traits\CompileWithContentArgumentAndRenderStatic;
 
 /**
- * Simple viewhelper to find uris in a text and wrap them as links
+ * Finds the first URL in a text and wraps it in a link
  *
- * = Example =
- *
- * <code title="Example">
- * <f:findLinks>{text_with_links}</f:findLinks>
- * </code>
+ * <nkcbase:makeClickable>{textWithLinks}</nkcbase:makeClickable>
  */
 class MakeClickableViewHelper extends AbstractViewHelper
 {
-    use CompileWithContentArgumentAndRenderStatic;
-
     /**
      * @var bool
      */
     protected $escapeOutput = false;
 
-    /**
-     * Initialize arguments.
-     *
-     * @throws Exception
-     */
-    public function initializeArguments()
+    public function initializeArguments(): void
     {
-        parent::initializeArguments();
-        $this->registerArgument('value', 'string', 'string to format');
+        $this->registerArgument('value', 'string', 'String to format');
     }
 
-    /**
-     * @param array $arguments
-     * @param \Closure $renderChildrenClosure
-     * @param RenderingContextInterface $renderingContext
-     * @return string
-     */
-    public static function renderStatic(array $arguments, \Closure $renderChildrenClosure, RenderingContextInterface $renderingContext)
+    public function getContentArgumentName(): string
     {
-        $value = $renderChildrenClosure();
+        return 'value';
+    }
 
-        preg_match_all('#[-a-zA-Z0-9@:%_\+.~\#?&//=]{2,256}\.[a-z]{2,4}\b(\/[-a-zA-Z0-9@:%_\+.~\#?&//=]*)?#si', $value, $result);
+    public function render(): string
+    {
+        $value = (string)($this->arguments['value'] ?? $this->renderChildren());
 
-        foreach ($result as $matches) {
-            foreach ($matches as $match) {
-                if (strlen($match) > 0) {
-                    $urlParts = parse_url($match);
-                    $scheme = (empty($urlParts['scheme'])) ? 'http://' : '';
-                    $value = str_replace($match, sprintf('<a href="%s%s" target="_blank" rel="nofollow">%s</a>', $scheme, $match, $match), $value);
-                    return $value;
-                }
-            }
+        if (!preg_match('#[-a-zA-Z0-9@:%_\+.~\#?&//=]{2,256}\.[a-z]{2,4}\b(\/[-a-zA-Z0-9@:%_\+.~\#?&//=]*)?#si', $value, $match)) {
+            return $value;
         }
-        return $value;
+
+        $url = $match[0];
+        $scheme = empty(parse_url($url)['scheme'] ?? '') ? 'http://' : '';
+        return str_replace($url, sprintf('<a href="%s%s" target="_blank" rel="nofollow">%s</a>', $scheme, $url, $url), $value);
     }
 }

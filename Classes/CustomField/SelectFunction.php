@@ -1,31 +1,41 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Nordkirche\NkcBase\CustomField;
 
+use Nordkirche\Ndk\Domain\Model\Person\Person;
 use Nordkirche\Ndk\Service\NapiService;
-use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\NkcBase\Service\ApiService;
 
+/**
+ * itemsProcFunc: the institutions of the functions of the person selected in
+ * the flexform field "settings.singlePersonUid"
+ */
 class SelectFunction
 {
-    /**
-     * @param $config
-     * @return mixed
-     * @throws ApiException
-     */
-    public function createNapiItems($config)
+    public function createNapiItems(array &$config): array
     {
-        if ($uri = $config['row']['settings.singlePersonUid']) {
-            $api = ApiService::get();
-            $napi = $api->factory(NapiService::class);
-            $person = $napi->resolveUrl($uri);
-            foreach ($person->getFunctions() as $object) {
-                if ($object->getInstitution()) {
-                    $config['items'][] = [
-                        '0' => $object->getInstitution()->getLabel(),
-                        '1' => (string)$object,
-                    ];
-                }
+        $uri = $config['row']['settings.singlePersonUid'] ?? '';
+        if (is_array($uri)) {
+            $uri = reset($uri);
+        }
+        if (!is_string($uri) || $uri === '') {
+            return $config;
+        }
+
+        /** @var NapiService $napiService */
+        $napiService = ApiService::get()->factory(NapiService::class);
+        $person = $napiService->resolveUrl($uri);
+        if (!$person instanceof Person) {
+            return $config;
+        }
+        foreach ($person->getFunctions() as $function) {
+            if ($function->getInstitution()) {
+                $config['items'][] = [
+                    'label' => (string)$function->getInstitution()->getLabel(),
+                    'value' => (string)$function,
+                ];
             }
         }
         return $config;

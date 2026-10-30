@@ -1,15 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Nordkirche\NkcBase\ViewHelpers;
 
 use Nordkirche\Ndk\Domain\Model\File\Image;
-use Nordkirche\NkcBase\Exception\ApiException;
 use Nordkirche\NkcBase\Service\ApiService;
-use TYPO3\CMS\Core\Core\ApplicationContext;
+use Nordkirche\NkcBase\Utility\PublicResource;
 use TYPO3\CMS\Core\Core\Environment;
-use TYPO3\CMS\Core\Utility\PathUtility;
 use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractTagBasedViewHelper;
 
+/**
+ * Renders an <img> tag for an NDK image in the requested size.
+ * All other arguments (alt, class, ...) are rendered as tag attributes.
+ *
+ * <nkcbase:image image="{person.picture}" width="300c" height="200c" alt="{person.name}" />
+ */
 class ImageViewHelper extends AbstractTagBasedViewHelper
 {
     public const FALLBACK_BASE_PATH = 'EXT:nkc_base/Resources/Public/Images/';
@@ -19,79 +25,52 @@ class ImageViewHelper extends AbstractTagBasedViewHelper
      */
     protected $tagName = 'img';
 
-    /**
-     * Initialize arguments.
-     */
-    public function initializeArguments()
+    public function initializeArguments(): void
     {
         parent::initializeArguments();
-        $this->registerArgument('image', 'object', 'Image', false, null);
-        $this->registerArgument('src', 'string', 'Image url', false, null);
+        $this->registerArgument('image', 'object', 'NDK image');
+        $this->registerArgument('src', 'string', 'Image URL, used if no image is given');
         $this->registerArgument('width', 'string', 'Width', false, '');
         $this->registerArgument('height', 'string', 'Height', false, '');
-        $this->registerArgument('fallbackOnError', 'string', 'fallback on Error', false, '');
-
-        $this->registerUniversalTagAttributes();
-        $this->registerTagAttribute('alt', 'string', 'Specifies an alternate text for an image', false);
-        $this->registerTagAttribute('ismap', 'string', 'Specifies an image as a server-side image-map. Rarely used. Look at usemap instead', false);
-        $this->registerTagAttribute('longdesc', 'string', 'Specifies the URL to a document that contains a long description of an image', false);
-        $this->registerTagAttribute('usemap', 'string', 'Specifies an image as a client-side image-map', false);
+        $this->registerArgument('fallbackOnError', 'string', 'Image URL used if the image can not be rendered');
     }
 
-    /**
-     * Accepts NDK image objects and requests resized versions
-     *
-     * @return string
-     * @throws ApiException
-     */
     public function render(): string
     {
-        /** @var Image $image */
         $image = $this->arguments['image'];
-        $src = $this->arguments['src'];
-        $width = $this->arguments['width'];
-        $height = $this->arguments['height'];
-        $fallbackOnError = $this->arguments['fallbackOnError'];
+        $src = (string)($this->arguments['src'] ?? '');
 
-        if (!$image && $src) {
+        if (!$image instanceof Image && $src !== '') {
             $image = ApiService::get()->factory(Image::class);
             $image->setUrl($src);
         }
 
         try {
-            $src = ($image instanceof Image) ? $image->render($width, $height) : '';
+            $src = $image instanceof Image ? (string)$image->render((string)$this->arguments['width'], (string)$this->arguments['height']) : '';
         } catch (\InvalidArgumentException $e) {
-            $src = $fallbackOnError ?? $this->getFallbackImages(Environment::getContext())['INVALID_ARGUMENTS'] ?? '';
+            $src = $this->arguments['fallbackOnError'] ?? $this->getDevelopmentFallback('invalid_arguments.jpg');
             $this->tag->addAttribute('alt', $e->getMessage());
         } catch (\Exception $e) {
-            $src = $fallbackOnError ?? $this->getFallbackImages(Environment::getContext())['MISSING_IMAGE'] ?? '';
+            $src = $this->arguments['fallbackOnError'] ?? $this->getDevelopmentFallback('missing_image.jpg');
             $this->tag->addAttribute('alt', $e->getMessage());
         }
 
-        if (empty($src)) {
+        if ($src === '') {
             return '';
         }
 
         $this->tag->addAttribute('src', $src);
-
         return $this->tag->render();
     }
 
     /**
-     * @param ApplicationContext $context
-     * @return array
+     * Placeholder images are only shown in development context
      */
-    private function getFallbackImages(ApplicationContext $context)
+    private function getDevelopmentFallback(string $fileName): string
     {
-        if ($context->isDevelopment()) {
-            return [
-                'INVALID_ARGUMENTS' => PathUtility::getPublicResourceWebPath(self::FALLBACK_BASE_PATH . 'invalid_arguments.jpg'),
-                'MISSING_IMAGE' => PathUtility::getPublicResourceWebPath(self::FALLBACK_BASE_PATH . 'missing_image.jpg'),
-            ];
+        if (!Environment::getContext()->isDevelopment()) {
+            return '';
         }
-        return [
-                'INVALID_ARGUMENTS' => '',
-                'MISSING_IMAGE' => '',
-            ];
+        return PublicResource::uri(self::FALLBACK_BASE_PATH . $fileName);
     }
 }

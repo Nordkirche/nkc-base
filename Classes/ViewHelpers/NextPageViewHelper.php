@@ -1,41 +1,32 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Nordkirche\NkcBase\ViewHelpers;
 
-use Nordkirche\Ndk\Domain\Query\AbstractQuery;
+use Nordkirche\Ndk\Domain\Query\PageQuery;
 use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
 
 /**
- * NextPageViewHelper
+ * Returns the number of the page following the one of the query
  *
- * = Examples =
- *
- * <code title="Napi Resources ViewHelper">
- * <nkcbase:nextPage query="{query}"></nkcbase:nextPage>
- * </code>
+ * <nkcbase:nextPage query="{query}" />
  */
 class NextPageViewHelper extends AbstractViewHelper
 {
-    /**
-     * Initialize ViewHelper arguments
-     */
-    public function initializeArguments()
+    public function initializeArguments(): void
     {
-        $this->registerArgument('query', '\\' . AbstractQuery::class, 'Query object to modify');
+        $this->registerArgument('query', PageQuery::class, 'NDK query');
     }
 
-    /**
-     * @return int
-     */
-    public function render()
+    public function getContentArgumentName(): string
     {
-        /** @var AbstractQuery $query */
-        $query = $this->arguments['query'];
+        return 'query';
+    }
 
-        if ($query === null) {
-            $query = $this->renderChildren();
-        }
-
-        return $query->getPageNumber() + 1;
+    public function render(): int
+    {
+        $query = $this->arguments['query'] ?? $this->renderChildren();
+        return $query instanceof PageQuery ? $query->getPageNumber() + 1 : 1;
     }
 }

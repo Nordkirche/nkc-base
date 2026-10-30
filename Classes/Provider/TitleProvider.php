@@ -7,7 +7,7 @@ namespace Nordkirche\NkcBase\Provider;
 use TYPO3\CMS\Core\PageTitle\AbstractPageTitleProvider;
 
 /**
- * Generate page title
+ * Page title set by the NAPI extensions (see TitleTagViewHelper)
  */
 class TitleProvider extends AbstractPageTitleProvider
 {

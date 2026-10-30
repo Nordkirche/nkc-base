@@ -1,49 +1,31 @@
 <?php
 
-namespace Nordkirche\NkcBase\ViewHelpers;
+declare(strict_types=1);
 
-/**
- * Simple viewhelper to get the NAPI class name of a model
- *
- * = Example =
- *
- * <code title="Example">
- *  <f:className model="{institition}" />
- * </code>
- */
+namespace Nordkirche\NkcBase\ViewHelpers;
 
 use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractViewHelper;
 
+/**
+ * Returns the short class name of an object, e.g. "Institution"
+ *
+ * <nkcbase:className model="{item}" />
+ */
 class ClassNameViewHelper extends AbstractViewHelper
 {
-    /**
-     * Initialize arguments.
-     *
-     * @throws \TYPO3Fluid\Fluid\Core\ViewHelper\Exception
-     */
-    public function initializeArguments()
+    public function initializeArguments(): void
     {
-        parent::initializeArguments();
-        $this->registerArgument('model', 'object', 'model to check');
+        $this->registerArgument('model', 'object', 'Object to inspect');
     }
 
-    /**
-     * @return bool|string
-     */
-    public function render()
+    public function getContentArgumentName(): string
     {
-        $model = $this->arguments['model'];
-        if ($model === null) {
-            $model = $this->renderChildren();
-        }
-        if (is_object($model)) {
-            try {
-                $reflect = new \ReflectionClass($model);
-            } catch (\Exception $e) {
-                return false;
-            }
-            return $reflect->getShortName();
-        }
-        return false;
+        return 'model';
+    }
+
+    public function render(): string|false
+    {
+        $model = $this->arguments['model'] ?? $this->renderChildren();
+        return is_object($model) ? (new \ReflectionClass($model))->getShortName() : false;
     }
 }

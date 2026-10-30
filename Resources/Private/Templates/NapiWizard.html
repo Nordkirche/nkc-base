@@ -1,85 +1,65 @@
-<f:be.pageRenderer pageTitle="title"
-                   includeCssFiles="{0: '{f:uri.resource(path:\'EXT:nkc_base/Resources/Public/Css/napi-wizard.css\')}'}"
-                   includeRequireJsModules="{0: '{f:uri.resource(path:\'EXT:nkc_base/Resources/Public/JavaScript/napi-wizard.js\')}'}"
-/>
+<html
+    xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers"
+    data-namespace-typo3-fluid="true"
+>
+<f:layout name="Module" />
 
-<f:render section="header" arguments="{_all}" />
+<f:section name="Content">
+    <f:be.pageRenderer
+        includeCssFiles="{0: 'EXT:nkc_base/Resources/Public/Css/napi-wizard.css'}"
+        includeJavaScriptModules="{0: '@nordkirche/nkc-base/napi-wizard.js'}"
+    />
 
-<form method="post" data-field="{fieldId}">
-    <div class="form-group">
-        <input type="text" name="search" id="search" class="form-control" placeholder="{f:translate(key: 'LLL:EXT:nkc_base/Resources/Private/Language/locallang.xlf:search.placeholder')}" value="{search}"/><input type="submit" id="doSearch" class="btn btn-default" value="{f:translate(key: 'LLL:EXT:nkc_base/Resources/Private/Language/locallang.xlf:search.button')}" />
-    </div>
-</form>
-
-<f:if condition="{search}">
-    <f:then>
-        <f:render section="result" arguments="{_all}" />
-    </f:then>
-    <f:else>
-        <f:translate key="LLL:EXT:nkc_base/Resources/Private/Language/locallang.xlf:search.hint"/>
-    </f:else>
-</f:if>
-
-<f:section name="result">
-    <f:for each="{searchResult}" as="result" key="object">
-        <f:if condition="{result -> f:count()}">
-            <h3><f:translate key="LLL:EXT:nkc_base/Resources/Private/Language/locallang.xlf:napi_objects.{object}" /></h3>
-            <p>
-                <f:for each="{result}" as="item">
-                    <f:switch expression="{object}">
-                        <f:case value="institution">
-                            <f:render section="item.institution" arguments="{item: item}" />
-                        </f:case>
-                        <f:case value="event">
-                            <f:render section="item.event" arguments="{item: item}" />
-                        </f:case>
-                        <f:case value="event">
-                            <f:render section="item.eventLocation" arguments="{item: item}" />
-                        </f:case>
-                        <f:defaultCase>
-                            <f:render section="item.default" arguments="{item: item}" />
-                        </f:defaultCase>
-                    </f:switch>
-                    <br /><br />
-                </f:for>
-            </p>
-        </f:if>
-    </f:for>
-</f:section>
-
-<f:section name="item.institution">
-    <strong><a href="{item}" class="t3js-pageLink">{item.name}</a></strong>
-    <f:if condition="{item.address}">
-        <br />{item.address.street}, {item.addresszipCode} {item.address.city}
-    </f:if>
-</f:section>
-
-<f:section name="item.event">
-    <strong><a href="{item}" class="t3js-pageLink">{item.label}</a></strong>
-    <f:if condition="{item.address}">
-        <br /><span style="color: #aaa">{item.address.street}, {item.addresszipCode} {item.address.city}</span>
-    </f:if>
-</f:section>
-
-<f:section name="item.eventLocation">
-    <strong><a href="{item}" class="t3js-pageLink">{item.name}</a></strong>
-    <f:if condition="{item.address}">
-        <br />{item.address.street}, {item.addresszipCode} {item.address.city}
-    </f:if>
-</f:section>
-
-<f:section name="item.default">
-    <strong><a href="{item}" class="t3js-pageLink">{item.label}</a></strong>
-</f:section>
-
-<f:section name="header">
     <h1>
         <f:translate key="LLL:EXT:nkc_base/Resources/Private/Language/locallang.xlf:header.find" />
-        <f:if condition="{search}">
-            &quot;{search}&quot;
-        </f:if>
+        <f:if condition="{search}">&quot;{search}&quot;</f:if>
         <f:translate key="LLL:EXT:nkc_base/Resources/Private/Language/locallang.xlf:header.find_in" />
         <f:for each="{allowedObjects}" as="object" iteration="iterator"><f:if condition="{iterator.index} > 0">,</f:if>
-            <f:translate key="LLL:EXT:nkc_base/Resources/Private/Language/locallang.xlf:napi_objects.{object}" /></f:for>
-        </h1>
+            <f:translate key="LLL:EXT:nkc_base/Resources/Private/Language/locallang.xlf:napi_objects.{object}" default="{object}" /></f:for>
+    </h1>
+
+    <form method="post" class="napi-wizard-search" id="napi-wizard" data-field-name="{fieldName}">
+        <input type="search" name="search" class="form-control" autofocus
+               placeholder="{f:translate(key: 'LLL:EXT:nkc_base/Resources/Private/Language/locallang.xlf:search.placeholder')}"
+               value="{search}" />
+        <button type="submit" class="btn btn-primary">
+            <f:translate key="LLL:EXT:nkc_base/Resources/Private/Language/locallang.xlf:search.button" />
+        </button>
+    </form>
+
+    <f:if condition="{search}">
+        <f:then>
+            <f:variable name="hasResults" value="0" />
+            <f:for each="{searchResult}" as="result" key="object">
+                <f:if condition="{result -> f:count()}">
+                    <f:variable name="hasResults" value="1" />
+                    <div class="napi-wizard-result">
+                        <h2><f:translate key="LLL:EXT:nkc_base/Resources/Private/Language/locallang.xlf:napi_objects.{object}" default="{object}" /></h2>
+                        <div class="list-group">
+                            <f:for each="{result}" as="item">
+                                <f:render section="Item" arguments="{item: item, object: object}" />
+                            </f:for>
+                        </div>
+                    </div>
+                </f:if>
+            </f:for>
+            <f:if condition="!{hasResults}">
+                <f:be.infobox state="-1"><f:translate key="LLL:EXT:nkc_base/Resources/Private/Language/locallang.xlf:search.feedback" /></f:be.infobox>
+            </f:if>
+        </f:then>
+        <f:else>
+            <p><f:translate key="LLL:EXT:nkc_base/Resources/Private/Language/locallang.xlf:search.hint" /></p>
+        </f:else>
+    </f:if>
 </f:section>
+
+<f:section name="Item">
+    <button type="button" class="list-group-item list-group-item-action napi-wizard-item t3js-napi-wizard-item"
+            data-value="{item}" data-label="{item.label}">
+        <strong>{item.label}</strong>
+        <f:if condition="{item.address}">
+            <br /><span class="napi-wizard-item-meta">{item.address.street}, {item.address.zipCode} {item.address.city}</span>
+        </f:if>
+    </button>
+</f:section>
+</html>

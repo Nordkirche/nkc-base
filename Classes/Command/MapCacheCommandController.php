@@ -1,279 +1,235 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Nordkirche\NkcBase\Command;
 
-/***
- *
- * This file is part of the "NkcBase" Extension for TYPO3 CMS.
- *
- * For the full copyright and license information, please read the
- * LICENSE.txt file that was distributed with this source code.
- *
- *  (c) 2017 Holger McCloy <mccloy@netzleuchten.com>, netzleuchten GmbH
- *
- ***/
-use Nordkirche\NkcAddress\Controller\MapController;
-use Nordkirche\NkcEvent\Controller\EventController;
+use Nordkirche\NkcBase\MapCache\Exception\FrontendRequiredException;
+use Nordkirche\NkcBase\MapCache\MapMarkerCache;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use TYPO3\CMS\Core\Configuration\FlexForm\FlexFormTools;
+use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Database\Query\Restriction\WorkspaceRestriction;
+use TYPO3\CMS\Core\Service\FlexFormService;
+use TYPO3\CMS\Core\Site\Entity\Site;
+use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager;
 
+/**
+ * Builds the marker cache of all map content elements.
+ *
+ * The content elements are found automatically: every element whose type is
+ * handled by a registered map marker provider is warmed up.
+ */
+#[AsCommand(
+    name: 'nkc_base:map_cache',
+    description: 'Baut den Marker-Cache aller Karten-Inhaltselemente auf',
+)]
 class MapCacheCommandController extends Command
 {
+    private const DEFAULT_MAX_AGE = 3600;
+
     /**
-     * Configure the command by defining the name, options and arguments
+     * Arguments of the former HTTP based warm-up, accepted to keep existing
+     * scheduler tasks working
      */
-    protected function configure()
-    {
-        $this->setName('Google Karten-Cache Warm-up')
-            ->setDescription('Baut den Marker-Cache für Google Karten auf');
+    private const LEGACY_ARGUMENTS = ['baseUrl', 'forceRefresh', 'frontendMode', 'typeNum', 'httpUser', 'httpPass'];
 
-        $this->addArgument(
-            'contentUids',
-            InputArgument::REQUIRED,
-            'Eine Liste von Content-Element-IDs, durch Komma separiert'
-        );
-
-        $this->addArgument(
-            'baseUrl',
-            InputArgument::REQUIRED,
-            'Die Base Url für einen Request gegen das TYPO3 Frontent (typischerweise Domain der Website)'
-        );
-
-        $this->addArgument(
-            'forceRefresh',
-            InputArgument::OPTIONAL,
-            'Soll eine Auffrischung des Caches erzwungen werden?',
-            false
-        );
-
-        $this->addArgument(
-            'frontendMode',
-            InputArgument::OPTIONAL,
-            'Soll der Cache durch Frontend Aufrufe aufgebaut werden (empfohlen)',
-            true
-        );
-
-        $this->addArgument(
-            'typeNum',
-            InputArgument::OPTIONAL,
-            'Der Page Type für den Aufruf (siehe ajaxTypeNum)',
-            0
-        );
-
-        $this->addArgument(
-            'httpUser',
-            InputArgument::OPTIONAL,
-            'Ein optionaler HTTP Username',
-            ''
-        );
-
-        $this->addArgument(
-            'httpPass',
-            InputArgument::OPTIONAL,
-            'Ein optionales HTTP Passwort',
-            ''
-        );
+    public function __construct(
+        private readonly MapMarkerCache $mapMarkerCache,
+        private readonly ConnectionPool $connectionPool,
+        private readonly SiteFinder $siteFinder,
+    ) {
+        parent::__construct();
     }
 
-    /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return int
-     * @throws \Exception
-     */
+    protected function configure(): void
+    {
+        $this
+            ->setHelp(
+                'Ohne Optionen werden alle Inhaltselemente aufgewärmt, für die ein Karten-Provider registriert ist ' .
+                '(z. B. aus nkc_address oder nkc_event). Einträge, die jünger als --max-age Sekunden sind, bleiben erhalten.'
+            )
+            ->addOption('content', 'c', InputOption::VALUE_REQUIRED, 'Nur diese Content-Element-IDs (durch Komma getrennt)')
+            ->addOption('site', 's', InputOption::VALUE_REQUIRED, 'Nur Inhaltselemente dieser Site (Identifier)')
+            ->addOption('force', 'f', InputOption::VALUE_NONE, 'Cache neu aufbauen, auch wenn er noch aktuell ist')
+            ->addOption('max-age', null, InputOption::VALUE_REQUIRED, 'Einträge älter als diese Anzahl Sekunden werden neu aufgebaut', (string)self::DEFAULT_MAX_AGE)
+            ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Gefundene Inhaltselemente nur auflisten')
+            ->addArgument('contentUids', InputArgument::OPTIONAL, 'Veraltet, bitte --content verwenden');
+
+        foreach (self::LEGACY_ARGUMENTS as $name) {
+            $this->addArgument($name, InputArgument::OPTIONAL, 'Veraltet, wird ignoriert');
+        }
+    }
+
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $contentUids = $input->getArgument('contentUids');
-        $baseUrl  = $input->getArgument('baseUrl');
-        $forceRefresh = $input->getArgument('forceRefresh');
-        $frontendMode = $input->getArgument('frontendMode');
-        $typeNum = $input->getArgument('typeNum');
-        $httpUser = $input->getArgument('httpUser');
-        $httpPass = $input->getArgument('httpPass');
-
         $io = new SymfonyStyle($input, $output);
-        $io->title('Start map cache warmup');
+        $io->title('Karten-Cache aufwärmen');
 
-        $persistenceManager = GeneralUtility::makeInstance(PersistenceManager::class);
-
-        if (trim($contentUids)) {
-            foreach (GeneralUtility::trimExplode(',', $contentUids) as $uid) {
-                if ($frontendMode) {
-                    $this->cachePage($uid, $typeNum, $baseUrl, $httpUser, $httpPass, ($forceRefresh == 1) ? 2 : 1);
-                } else {
-                    $this->createCache($uid, ($forceRefresh == 1) ? 2 : 1);
-                }
-            }
-        } else {
-            echo "Error: no content uids given\n";
+        $pluginTypes = $this->mapMarkerCache->getSupportedPluginTypes();
+        if ($pluginTypes === []) {
+            $io->warning('Es ist kein Karten-Provider registriert (z. B. aus nkc_address oder nkc_event).');
+            return Command::SUCCESS;
         }
 
-        // Persist data
-        $persistenceManager->persistAll();
+        $this->warnAboutLegacyArguments($input, $io);
 
-        $io->success('Cache warm-up completed.');
+        $contentUids = GeneralUtility::intExplode(',', (string)($input->getOption('content') ?? $input->getArgument('contentUids') ?? ''), true);
+        $siteIdentifier = (string)($input->getOption('site') ?? '');
+        $force = (bool)$input->getOption('force') || (int)$input->getArgument('forceRefresh') === 1;
+        $maxAge = max(0, (int)$input->getOption('max-age'));
 
-        return 0;
+        $elements = $this->findContentElements($pluginTypes, $contentUids, $siteIdentifier, $io);
+        if ($elements === []) {
+            $io->note('Keine passenden Inhaltselemente gefunden.');
+            return Command::SUCCESS;
+        }
+
+        if ($input->getOption('dry-run')) {
+            $io->table(
+                ['UID', 'Seite', 'Site', 'Typ', 'Cache aktuell'],
+                array_map(fn(array $element): array => [
+                    $element['row']['uid'],
+                    $element['row']['pid'],
+                    $element['site']->getIdentifier(),
+                    MapMarkerCache::getPluginType($element['row']),
+                    $this->mapMarkerCache->has($element['row'], $maxAge) ? 'ja' : 'nein',
+                ], $elements)
+            );
+            return Command::SUCCESS;
+        }
+
+        $results = [];
+        $errors = 0;
+        $io->progressStart(count($elements));
+        foreach ($elements as ['row' => $row, 'site' => $site]) {
+            try {
+                $isFresh = !$force && $this->mapMarkerCache->has($row, $maxAge);
+                $entry = $this->mapMarkerCache->get($row, $this->getSettings($row), $site, $maxAge, $force);
+                $status = $isFresh ? 'aktuell' : 'neu aufgebaut';
+                $markers = count($entry['data']);
+            } catch (FrontendRequiredException $e) {
+                $status = 'übersprungen: ' . $e->getMessage();
+                $markers = '-';
+            } catch (\Throwable $e) {
+                $errors++;
+                $status = 'Fehler: ' . $e->getMessage();
+                $markers = '-';
+            }
+            $results[] = [$row['uid'], $row['pid'], MapMarkerCache::getPluginType($row), $markers, $status];
+            $io->progressAdvance();
+        }
+        $io->progressFinish();
+        $io->table(['UID', 'Seite', 'Typ', 'Marker', 'Status'], $results);
+
+        if ($errors > 0) {
+            $io->error(sprintf('%d von %d Inhaltselementen konnten nicht aufgebaut werden.', $errors, count($elements)));
+            return Command::FAILURE;
+        }
+
+        $io->success(sprintf('%d Inhaltselemente verarbeitet.', count($elements)));
+        return Command::SUCCESS;
     }
 
     /**
-     * @param $uid
-     * @param $forceRefresh
-     * @throws \TYPO3\CMS\Extbase\Object\Exception
+     * Visible content elements of the given types on pages that belong to a site
+     *
+     * @param string[] $pluginTypes
+     * @param int[] $contentUids
+     * @return list<array{row: array<string, mixed>, site: Site}>
      */
-    private function createCache($uid, $forceRefresh)
+    private function findContentElements(array $pluginTypes, array $contentUids, string $siteIdentifier, SymfonyStyle $io): array
     {
-        if ($content = $this->getContentRecord($uid)) {
-            $className = false;
+        $queryBuilder = $this->connectionPool->getQueryBuilderForTable('tt_content');
+        $queryBuilder->getRestrictions()->add(GeneralUtility::makeInstance(WorkspaceRestriction::class, 0));
 
-            if ($content['list_type'] == 'nkcaddress_map') {
-                /** @var MapController $controller */
-                $className = MapController::class;
-            } elseif ($content['list_type'] == 'nkcevent_map') {
-                /** @var \Nordkirche\NkcEvent\Controller\MapController $controller */
-                $className = \Nordkirche\NkcEvent\Controller\MapController::class;
-            } elseif ($content['list_type'] == 'nkcevent_main') {
-                /** @var EventController $controller */
-                $className = EventController::class;
-            }
+        $typeConstraint = $queryBuilder->expr()->in('c.CType', $queryBuilder->createNamedParameter($pluginTypes, Connection::PARAM_STR_ARRAY));
 
-            if ($className) {
-                $controller = GeneralUtility::makeInstance($className);
-                $flexformSettings = $this->getFlexFormData($content);
-                $flexformSettings['settings']['backendContext'] = 1;
-                $controller->setSettings($flexformSettings['settings']);
-                $controller->initializeAction();
-                $controller->buildCache($content, $forceRefresh);
-            }
+        // Plugins of type "list" only exist up to TYPO3 v13 (v14 has no column list_type)
+        if (isset($GLOBALS['TCA']['tt_content']['columns']['list_type'])) {
+            $typeConstraint = $queryBuilder->expr()->or(
+                $typeConstraint,
+                $queryBuilder->expr()->and(
+                    $queryBuilder->expr()->eq('c.CType', $queryBuilder->createNamedParameter('list')),
+                    $queryBuilder->expr()->in('c.list_type', $queryBuilder->createNamedParameter($pluginTypes, Connection::PARAM_STR_ARRAY))
+                )
+            );
         }
+
+        $queryBuilder
+            ->select('c.*')
+            ->from('tt_content', 'c')
+            ->join('c', 'pages', 'p', $queryBuilder->expr()->eq('p.uid', $queryBuilder->quoteIdentifier('c.pid')))
+            ->where($typeConstraint)
+            ->orderBy('c.pid')
+            ->addOrderBy('c.sorting');
+
+        if ($contentUids !== []) {
+            $queryBuilder->andWhere(
+                $queryBuilder->expr()->in('c.uid', $queryBuilder->createNamedParameter($contentUids, Connection::PARAM_INT_ARRAY))
+            );
+        }
+
+        $elements = [];
+        foreach ($queryBuilder->executeQuery()->fetchAllAssociative() as $row) {
+            try {
+                $site = $this->siteFinder->getSiteByPageId((int)$row['pid']);
+            } catch (\Throwable) {
+                $io->note(sprintf('Inhaltselement %d übersprungen: Seite %d gehört zu keiner Site.', $row['uid'], $row['pid']));
+                continue;
+            }
+            if ($siteIdentifier !== '' && $site->getIdentifier() !== $siteIdentifier) {
+                continue;
+            }
+            $elements[] = ['row' => $row, 'site' => $site];
+        }
+        return $elements;
     }
 
     /**
-     * @param $content
-     * @return mixed
+     * The "settings" part of the plugin flexform, flagged for the backend context
+     *
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
      */
-    private function getFlexFormData($content)
+    private function getSettings(array $row): array
     {
-        $ffData = [];
-
-        $flexform = GeneralUtility::xml2array($content['pi_flexform']);
-
-        foreach ($flexform['data'] as $sheet => $sheetData) {
-            foreach ($sheetData['lDEF'] as $fieldname => $fieldData) {
-                if ($fieldData['vDEF']) {
-                    $this->dotNotationToArray($fieldname, $fieldData['vDEF'], $ffData);
-                }
-            }
-        }
-        return $ffData;
+        $flexForm = (string)($row['pi_flexform'] ?? '');
+        $data = $flexForm === '' ? [] : $this->convertFlexForm($flexForm);
+        $settings = is_array($data['settings'] ?? null) ? $data['settings'] : [];
+        $settings['backendContext'] = 1;
+        return $settings;
     }
 
-    /**
-     * @param $notation
-     * @param $value
-     * @param $array
-     */
-    private function dotNotationToArray($notation, $value, &$array)
+    private function convertFlexForm(string $flexForm): array
     {
-        list($key, $notation) = explode('.', $notation, 2);
-        if ($notation) {
-            $this->dotNotationToArray($notation, $value, $array[$key]);
-        } else {
-            $array[$key] = $value;
+        // TYPO3 v14 merged the FlexFormService into the FlexFormTools
+        $flexFormTools = GeneralUtility::makeInstance(FlexFormTools::class);
+        if (method_exists($flexFormTools, 'convertFlexFormContentToArray')) {
+            return $flexFormTools->convertFlexFormContentToArray($flexForm);
         }
+        return GeneralUtility::makeInstance(FlexFormService::class)->convertFlexFormContentToArray($flexForm);
     }
 
-    /**
-     * @param $uid
-     * @param $typeNum
-     * @param $baseUrl
-     * @param $httpUser
-     * @param $httpPass
-     * @param $forceLevel
-     * @throws \Exception
-     */
-    private function cachePage($uid, $typeNum, $baseUrl, $httpUser, $httpPass, $forceLevel = 1)
+    private function warnAboutLegacyArguments(InputInterface $input, SymfonyStyle $io): void
     {
-        if ($content = $this->getContentRecord($uid)) {
-            if ($parameter = $this->getParameterNamespace($content)) {
-                $requestUrl = sprintf(
-                    '%s?id=%s&type=%s&uid=%s&%s[action]=data&%s[forceReload]=%s&no_cache=1',
-                    $baseUrl,
-                    $content['pid'],
-                    $typeNum,
-                    $content['uid'],
-                    $parameter,
-                    $parameter,
-                    $forceLevel
-                );
-                $this->doPageRequest($requestUrl, $httpUser, $httpPass);
-            }
+        if ($input->getArgument('contentUids') !== null) {
+            $io->note('Das Argument "contentUids" ist veraltet, bitte die Option --content verwenden.');
         }
-    }
-
-    /**
-     * @param $content
-     * @return bool|string
-     */
-    private function getParameterNamespace($content)
-    {
-        if ($content['list_type']) {
-            return 'tx_' . $content['list_type'];
-        }
-        return false;
-    }
-
-    /**
-     * @param $uid
-     * @return mixed
-     */
-    private function getContentRecord($uid)
-    {
-        $connection = GeneralUtility::makeInstance(ConnectionPool::class)->getConnectionForTable('tt_content');
-
-        $where = 'hidden = 0 AND deleted = 0 AND uid = ' . (int)$uid;
-        $res = $connection->executeQuery('SELECT * FROM tt_content WHERE ' . $where);
-        if ($res->rowCount()) {
-            foreach ($res as $row) {
-                return $row;
-            }
-        }
-    }
-
-    /**
-     * @param $url
-     * @param $httpUser
-     * @param $httpPass
-     * @throws \Exception
-     */
-    protected function doPageRequest($url, $httpUser, $httpPass)
-    {
-        $content = false;
-
-        if (function_exists('curl_init')) {
-            echo "Getting $url\n";
-            $c = curl_init($url);
-            curl_setopt($c, CURLOPT_RETURNTRANSFER, 1);
-            curl_setopt($c, CURLOPT_FOLLOWLOCATION, 1);
-            curl_setopt($c, CURLOPT_MAXREDIRS, 5);
-            curl_setopt($c, CURLOPT_HEADER, 0);
-
-            if (!empty($httpUser) && !empty($httpPass)) {
-                curl_setopt($c, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-                curl_setopt($c, CURLOPT_USERPWD, $httpUser . ':' . $httpPass);
-            }
-
-            $content = curl_exec($c);
-            $info = curl_getinfo($c);
-            curl_close($c);
-        } else {
-            throw new \Exception('cURL not supported. Need PHP with cURL support.');
+        $legacy = array_filter(self::LEGACY_ARGUMENTS, static fn(string $name): bool => $input->getArgument($name) !== null);
+        if ($legacy !== []) {
+            $io->note(sprintf(
+                'Die Argumente %s werden nicht mehr benötigt und ignoriert. Der Cache wird direkt aufgebaut, ohne HTTP-Requests.',
+                implode(', ', $legacy)
+            ));
         }
     }
 }
