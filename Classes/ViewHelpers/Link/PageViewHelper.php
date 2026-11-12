@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace Nordkirche\NkcBase\ViewHelpers\Link;
 
+use Nordkirche\NkcBase\Service\PageUriBuilder;
 use Psr\Http\Message\ServerRequestInterface;
-use TYPO3\CMS\Core\Routing\RouterInterface;
-use TYPO3\CMS\Core\Site\Entity\Site;
-use TYPO3\CMS\Core\Site\Entity\SiteLanguage;
-use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractTagBasedViewHelper;
 
 /**
@@ -16,7 +13,7 @@ use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractTagBasedViewHelper;
  *
  * Unlike <f:link.page> this works without a frontend request, e.g. when map
  * markers are rendered on the command line by the map cache warm-up. In that
- * case the link is always absolute.
+ * case the link is always absolute. See PageUriBuilder.
  *
  * <nkcbase:link.page pageUid="12" additionalParams="{tx_nkcaddress_person: {uid: person.id}}">Mehr erfahren</nkcbase:link.page>
  */
@@ -27,7 +24,7 @@ class PageViewHelper extends AbstractTagBasedViewHelper
      */
     protected $tagName = 'a';
 
-    public function __construct(private readonly SiteFinder $siteFinder)
+    public function __construct(private readonly PageUriBuilder $pageUriBuilder)
     {
         parent::__construct();
     }
@@ -57,63 +54,15 @@ class PageViewHelper extends AbstractTagBasedViewHelper
 
     private function buildUri(): string
     {
-        $pageUid = (int)($this->arguments['pageUid'] ?? 0);
-        $request = $this->getRequest();
-
-        if ($pageUid <= 0) {
-            $pageUid = (int)($request?->getAttribute('routing')?->getPageId() ?? 0);
-        }
-        if ($pageUid <= 0) {
-            return '';
-        }
-
-        try {
-            $site = $this->siteFinder->getSiteByPageId($pageUid);
-        } catch (\Throwable) {
-            return '';
-        }
-
-        $parameters = (array)$this->arguments['additionalParams'];
-        if ((int)$this->arguments['pageType'] > 0) {
-            $parameters['type'] = (int)$this->arguments['pageType'];
-        }
-        $parameters['_language'] = $this->resolveLanguage($site, $request);
-
-        // Absolute if requested, without a request (CLI) or if the target is on another site
-        $currentSite = $request?->getAttribute('site');
-        $absolute = $this->arguments['absolute']
-            || $request === null
-            || !$currentSite instanceof Site
-            || $currentSite->getIdentifier() !== $site->getIdentifier();
-
-        try {
-            return (string)$site->getRouter()->generateUri(
-                $pageUid,
-                $parameters,
-                (string)$this->arguments['section'],
-                $absolute ? RouterInterface::ABSOLUTE_URL : RouterInterface::ABSOLUTE_PATH
-            );
-        } catch (\Throwable) {
-            return '';
-        }
-    }
-
-    private function resolveLanguage(Site $site, ?ServerRequestInterface $request): SiteLanguage
-    {
-        if (isset($this->arguments['language'])) {
-            try {
-                return $site->getLanguageById((int)$this->arguments['language']);
-            } catch (\Throwable) {
-            }
-        }
-        $currentLanguage = $request?->getAttribute('language');
-        if ($currentLanguage instanceof SiteLanguage) {
-            try {
-                return $site->getLanguageById($currentLanguage->getLanguageId());
-            } catch (\Throwable) {
-            }
-        }
-        return $site->getDefaultLanguage();
+        return $this->pageUriBuilder->build(
+            (int)($this->arguments['pageUid'] ?? 0),
+            (array)$this->arguments['additionalParams'],
+            $this->getRequest(),
+            (bool)$this->arguments['absolute'],
+            isset($this->arguments['language']) ? (int)$this->arguments['language'] : null,
+            (int)$this->arguments['pageType'],
+            (string)$this->arguments['section']
+        );
     }
 
     private function getRequest(): ?ServerRequestInterface

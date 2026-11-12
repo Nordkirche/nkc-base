@@ -6,12 +6,6 @@ parameters:
 	excludePaths:
 		- .build
 	ignoreErrors:
-		# The NDK documents integer ids, but the filters also accept the ids as
-		# strings, as they come from flexforms and TypoScript.
-		-
-			identifier: argument.type
-			message: '#^Parameter \#1 \$\w+ of method Nordkirche\\Ndk\\Domain\\Query\\\w+Query::set\w+\(\) expects array<int>, list<string> given\.$#'
-			path: Classes/Controller/BaseController.php
 		# Version switch between TYPO3 v13 (FlexFormService) and v14 (FlexFormTools)
 		-
 			identifier: function.alreadyNarrowedType
@@ -36,4 +30,10 @@ parameters:
 			reportUnmatched: false
 		-
 			message: '#AbstractListTypeToCTypeUpdateCompat#'
+			reportUnmatched: false
+		# SetDefinition::$routeEnhancers exists since TYPO3 14
+		-
+			identifier: property.notFound
+			message: '#SetDefinition::\$routeEnhancers#'
+			path: Classes/Routing/SetRouteEnhancers.php
 			reportUnmatched: false

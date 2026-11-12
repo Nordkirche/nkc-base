@@ -114,7 +114,6 @@ final class SetRouteEnhancers
     private function getRouteEnhancers(SetDefinition $set): array
     {
         if (self::isSupportedByCore()) {
-            /** @phpstan-ignore property.notFound (TYPO3 14) */
             return (array)$set->routeEnhancers;
         }
 

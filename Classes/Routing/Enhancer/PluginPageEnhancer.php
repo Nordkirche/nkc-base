@@ -79,13 +79,13 @@ class PluginPageEnhancer extends ExtbasePluginEnhancer
         $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tt_content');
         // Hidden or timed elements still own their URLs: a 404 would be cached by search engines
         $queryBuilder->getRestrictions()->removeAll()->add(GeneralUtility::makeInstance(DeletedRestriction::class));
-        $contentTypes = array_values(array_map('strval', $queryBuilder
+        $contentTypes = array_map('strval', $queryBuilder
             ->select('CType')
             ->from('tt_content')
             ->where($queryBuilder->expr()->eq('pid', $queryBuilder->createNamedParameter($pageId, Connection::PARAM_INT)))
             ->groupBy('CType')
             ->executeQuery()
-            ->fetchFirstColumn()));
+            ->fetchFirstColumn());
 
         $cache->set($identifier, $contentTypes);
         return $contentTypes;
