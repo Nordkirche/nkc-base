@@ -42,6 +42,15 @@ Sie beim AfÖ der Nordkirche. Alternativ können Sie die Konfiguration in der
         'NDK_NAPI_TIMEOUT' => 30,
     ];
 
+Optionale Einstellungen:
+
+| Einstellung | Bedeutung |
+| --- | --- |
+| `NDK_HTTP_AUTH_USERNAME`, `NDK_HTTP_AUTH_PASSWORD` | HTTP-Basic-Auth vor der NAPI (z. B. für Testsysteme) |
+| `NDK_LOG_FILE` | alle NAPI-Requests in diese Datei schreiben (leer = aus) |
+| `NDK_NAPI_TIMEOUT` | Zeitlimit für Requests in Sekunden (Standard 20) |
+| `NDK_HEALTH_*` | Status-Prüfung und Alarm, siehe [NAPI-Status](#napi-status) |
+
 ## Zugriff auf das NDK
 
 In eigenem Code wird die `NdkApiFactory` per Dependency Injection genutzt. Sie liefert
@@ -115,7 +124,9 @@ Ergebnis liegt in `$this->settings['flexform']`.
 
 Für die Pagination stehen `setPagination()`, `getPaginationValues()`, `getItemsPerPage()`
 und `getPagination()` zur Verfügung. Die aktuelle Seite wird immer als Parameter
-übergeben.
+übergeben. Die Vorgaben kommen aus den Site Settings `nkcBase.paginate.itemsPerPage`
+(Standard 20) und `nkcBase.paginate.maximumNumberOfLinks` (Standard 3). Beim statischen
+Template sind es die gleichnamigen TypoScript-Konstanten.
 
 `fetchList($repository, $query)` holt eine Liste. Lehnt die NAPI die Abfrage ab (HTTP 4xx,
 z. B. ein Filter, den der Endpunkt nicht kennt), gibt es ein leeres Ergebnis und einen
@@ -285,6 +296,37 @@ Kann ein Provider die Marker nur mit dem TypoScript der Seite aufbauen (z. B. We
 Rootline), wirft er `MapCache\Exception\FrontendRequiredException`. `nkc_base:map_cache`
 überspringt das Inhaltselement dann ohne Fehler, der erste Seitenaufruf baut die Marker auf.
 
+### Info-Fenster der Marker
+
+Die Info-Fenster der Marker lädt das Karten-JavaScript erst beim Klick nach:
+
+    GET {Site-Base}marker?items=i:12,p:5,e:7
+
+Die Frontend-Middleware `nordkirche/nkc-base/marker-info` beantwortet diese Anfrage, bevor
+die Seite aufgelöst wird. Das Kürzel vor dem Doppelpunkt ist der Objekttyp, danach folgt die
+NAPI-ID. Pro Anfrage werden höchstens 100 Einträge verarbeitet, die Antwort ist HTML und wird
+10 Minuten gecacht (`Cache-Control: public, max-age=600`).
+
+Extensions liefern das HTML über einen Provider. Jede Klasse, die
+`MarkerInfoProviderInterface` implementiert, wird automatisch registriert:
+
+    final class InstitutionInfoProvider implements MarkerInfoProviderInterface
+    {
+        public function getObjectType(): string
+        {
+            return 'i';
+        }
+
+        public function renderInfo(array $ids, ServerRequestInterface $request, Site $site): string
+        {
+            // NAPI-Objekte zu $ids laden und als HTML rendern
+        }
+    }
+
+Da die Middleware vor dem Auflösen der Seite läuft, gibt es kein TypoScript. Einstellungen
+kommen aus den Site Settings. Fehler eines Providers werden geloggt, die übrigen Provider
+werden trotzdem ausgeführt.
+
 ## NAPI-Status
 
 Das Backend-Modul **System > NAPI-Status** (nur für Admins) zeigt:
@@ -307,7 +349,8 @@ unvollständig).
 
     vendor/bin/typo3 nkc_base:napi_check
 
-Den Command im Scheduler z. B. alle 5 Minuten ausführen. Exit-Code 1 bei `down`,
+Den Command im Scheduler (Task „Execute console commands“, Command `nkc_base:napi_check`)
+z. B. alle 5 Minuten ausführen. Exit-Code 1 bei `down`,
 `auth` oder `config`, so kann er auch von externem Monitoring aufgerufen werden
 (`--no-alert` verschickt keine Mails und speichert nichts).
 
@@ -321,6 +364,16 @@ sobald die NAPI wieder normal antwortet.
 | `NDK_HEALTH_ENDPOINTS` | geprüfte Endpunkte | institutions,people,events,categories |
 | `NDK_HEALTH_ALERT_RECIPIENTS` | Empfänger der Alarm-Mails (kommagetrennt) | leer = kein Alarm |
 | `NDK_HEALTH_ALERT_AFTER` | Fehlschläge in Folge bis zum Alarm | 3 |
+
+Die Werte werden in der Extension-Konfiguration (Reiter „status“) gepflegt oder in der
+`config/system/additional.php`:
+
+    $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['nkc_base']['NDK_HEALTH_ALERT_RECIPIENTS'] = 'admin@example.org,technik@example.org';
+    $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['nkc_base']['NDK_HEALTH_SLOW_MS'] = 2000;
+
+Die Mails werden über die TYPO3-Mail-API verschickt. Der Mail-Transport muss also
+eingerichtet sein. Als Absender dient `$GLOBALS['TYPO3_CONF_VARS']['MAIL']['defaultMailFromAddress']`
+(bzw. `defaultMailFromName`).
 
 ### Dashboard-Widget
 
